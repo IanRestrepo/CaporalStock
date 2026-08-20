@@ -1,0 +1,410 @@
+// CAPORAL — inventario hotelero
+// Principio rector: el stock NO se edita, se deriva de movimientos.
+// Toda cantidad viaja en la unidad base del producto (g, ml o unidad).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────  Personas  ─────────────────────────────
+
+enum Role {
+  ADMIN
+  EMPLEADO
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  username  String   @unique
+  pinHash   String
+  role      Role     @default(EMPLEADO)
+  active    Boolean  @default(true)
+  accent    String   @default("clay") // preferencia visual
+  navStyle  String   @default("clasica")
+  createdAt DateTime @default(now())
+
+  movements    Movement[]
+  purchases    Purchase[]
+  checklistRuns ChecklistRun[]
+
+  @@index([active])
+}
+
+// ────────────────────────────  Ubicaciones  ───────────────────────────
+
+enum LocationKind {
+  PRINCIPAL // bodega central
+  MINIBAR   // nevera de una suite
+  AREA      // lavandería, cocina, mantenimiento…
+}
+
+model Location {
+  id       String       @id @default(cuid())
+  name     String
+  kind     LocationKind
+  active   Boolean      @default(true)
+  sortOrder Int         @default(0)
+
+  room   Room?   @relation(fields: [roomId], references: [id])
+  roomId String? @unique
+
+  stock         Stock[]
+  movementsOut  Movement[] @relation("MovementFrom")
+  movementsIn   Movement[] @relation("MovementTo")
+  purchases     Purchase[]
+
+  @@index([kind, active])
+}
+
+model Room {
+  id       String  @id @default(cuid())
+  number   String  @unique // "101", "Suite 3"
+  floor    String?
+  active   Boolean @default(true)
+  sortOrder Int    @default(0)
+
+  minibar       Location?
+  movements     Movement[]
+  checklistRuns ChecklistRun[]
+}
+
+// ─────────────────────────────  Catálogo  ─────────────────────────────
+
+enum BaseUnit {
+  GRAMO
+  MILILITRO
+  UNIDAD
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String @default("slate") // token semántico, no hex suelto
+  icon  String @default("package")
+  sortOrder Int @default(0)
+
+  products Product[]
+  recipes  Recipe[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String?  @unique
+  categoryId  String
+  baseUnit    BaseUnit
+  /// costo por UNIDAD BASE (ej. 0.0042 por gramo) — promedio ponderado
+  costPrice   Decimal  @default(0) @db.Decimal(14, 6)
+  /// precio de venta por UNIDAD BASE
+  salePrice   Decimal  @default(0) @db.Decimal(14, 6)
+  perishable  Boolean  @default(false)
+  /// mínimo global; una ubicación puede sobrescribirlo en Stock.minQty
+  minQty      Decimal  @default(0) @db.Decimal(16, 4)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  category      Category       @relation(fields: [categoryId], references: [id])
+  presentations Presentation[]
+  stock         Stock[]
+  lots          Lot[]
+  movementLines MovementLine[]
+  purchaseItems PurchaseItem[]
+  recipeItems   RecipeItem[]
+  checklistItems ChecklistTemplateItem[]
+
+  @@index([categoryId, active])
+  @@index([name])
+}
+
+/// Formato en que se compra o se consume. factor = cuántas unidades base contiene.
+/// "Bolsa detergente 500 g" -> factor 500. "Caja x12 gaseosas" -> factor 12.
+model Presentation {
+  id        String  @id @default(cuid())
+  productId String
+  name      String
+  factor    Decimal @db.Decimal(16, 4)
+  barcode   String?
+  isDefaultPurchase Boolean @default(false)
+  isDefaultConsume  Boolean @default(false)
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  purchaseItems PurchaseItem[]
+
+  @@unique([productId, name])
+}
+
+// ───────────────────────────  Existencias  ────────────────────────────
+
+/// Saldo materializado por producto+ubicación. Se recalcula con cada movimiento
+/// dentro de la misma transacción; nunca se escribe a mano desde la UI.
+model Stock {
+  id         String  @id @default(cuid())
+  productId  String
+  locationId String
+  quantity   Decimal @default(0) @db.Decimal(16, 4)
+  /// sobrescribe Product.minQty para esta ubicación
+  minQty     Decimal? @db.Decimal(16, 4)
+  /// nivel "par": lo que DEBE haber (usado para reponer minibares)
+  parQty     Decimal? @db.Decimal(16, 4)
+  updatedAt  DateTime @updatedAt
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, locationId])
+  @@index([locationId])
+}
+
+/// Lote: existe para poder vencer y costear. Solo para productos perecederos.
+model Lot {
+  id         String    @id @default(cuid())
+  productId  String
+  code       String
+  expiresAt  DateTime?
+  unitCost   Decimal   @default(0) @db.Decimal(14, 6)
+  receivedAt DateTime  @default(now())
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movementLines MovementLine[]
+  purchaseItem  PurchaseItem?
+
+  @@unique([productId, code])
+  @@index([expiresAt])
+}
+
+// ────────────────────────────  Movimientos  ───────────────────────────
+
+enum MovementType {
+  ENTRADA    // compra o carga inicial — solo admin
+  TRASLADO   // bodega -> minibar / cocina / lavandería
+  CONSUMO    // venta o uso: sale del inventario
+  DANIO      // merma, rotura, vencido
+  AJUSTE     // corrección de conteo — solo admin
+}
+
+model Movement {
+  id         String       @id @default(cuid())
+  type       MovementType
+  createdById String
+  fromLocationId String?
+  toLocationId   String?
+  /// habitación asociada (para qué suite se sacó el detergente)
+  roomId     String?
+  reason     String?
+  note       String?
+  purchaseId String?
+  checklistRunId String?
+  occurredAt DateTime     @default(now())
+  createdAt  DateTime     @default(now())
+
+  createdBy    User      @relation(fields: [createdById], references: [id])
+  fromLocation Location? @relation("MovementFrom", fields: [fromLocationId], references: [id])
+  toLocation   Location? @relation("MovementTo", fields: [toLocationId], references: [id])
+  room         Room?     @relation(fields: [roomId], references: [id])
+  purchase     Purchase? @relation(fields: [purchaseId], references: [id])
+  checklistRun ChecklistRun? @relation(fields: [checklistRunId], references: [id])
+
+  lines MovementLine[]
+
+  @@index([occurredAt])
+  @@index([type, occurredAt])
+  @@index([createdById])
+  @@index([roomId])
+}
+
+model MovementLine {
+  id         String  @id @default(cuid())
+  movementId String
+  productId  String
+  lotId      String?
+  /// siempre positivo, en unidad base
+  quantity   Decimal @db.Decimal(16, 4)
+  /// costo unitario congelado al momento del movimiento
+  unitCost   Decimal @default(0) @db.Decimal(14, 6)
+  unitPrice  Decimal @default(0) @db.Decimal(14, 6)
+
+  movement Movement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id])
+  lot      Lot?     @relation(fields: [lotId], references: [id])
+
+  @@index([productId])
+  @@index([movementId])
+}
+
+// ──────────────────────────────  Compras  ─────────────────────────────
+
+enum PurchaseStatus {
+  BORRADOR
+  CONFIRMADA
+}
+
+model Supplier {
+  id      String  @id @default(cuid())
+  name    String  @unique
+  taxId   String?
+  phone   String?
+  email   String?
+  notes   String?
+  active  Boolean @default(true)
+
+  purchases Purchase[]
+}
+
+model Purchase {
+  id          String         @id @default(cuid())
+  number      String
+  supplierId  String
+  locationId  String // destino de la mercancía
+  createdById String
+  status      PurchaseStatus @default(BORRADOR)
+  issuedAt    DateTime
+  receivedAt  DateTime?
+  subtotal    Decimal        @default(0) @db.Decimal(14, 2)
+  tax         Decimal        @default(0) @db.Decimal(14, 2)
+  total       Decimal        @default(0) @db.Decimal(14, 2)
+  /// factura escaneada o fotografiada
+  attachmentUrl  String?
+  attachmentName String?
+  notes       String?
+  createdAt   DateTime       @default(now())
+
+  supplier  Supplier       @relation(fields: [supplierId], references: [id])
+  location  Location       @relation(fields: [locationId], references: [id])
+  createdBy User           @relation(fields: [createdById], references: [id])
+  items     PurchaseItem[]
+  movements Movement[]
+
+  @@unique([supplierId, number])
+  @@index([issuedAt])
+}
+
+model PurchaseItem {
+  id             String  @id @default(cuid())
+  purchaseId     String
+  productId      String
+  presentationId String?
+  /// cantidad tal como viene en la factura (ej. 50 bolsas)
+  qtyPresentation Decimal @db.Decimal(16, 4)
+  /// la misma cantidad convertida a unidad base (ej. 25000 g)
+  qtyBase        Decimal @db.Decimal(16, 4)
+  /// costo por unidad base
+  unitCost       Decimal @db.Decimal(14, 6)
+  lineTotal      Decimal @db.Decimal(14, 2)
+  lotId          String? @unique
+  expiresAt      DateTime?
+
+  purchase     Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product      Product       @relation(fields: [productId], references: [id])
+  presentation Presentation? @relation(fields: [presentationId], references: [id])
+  lot          Lot?          @relation(fields: [lotId], references: [id])
+
+  @@index([purchaseId])
+}
+
+// ──────────────────────────  Cocina / recetas  ────────────────────────
+
+model Recipe {
+  id           String  @id @default(cuid())
+  name         String  @unique
+  categoryId   String?
+  /// porciones que rinde la receta completa
+  yieldPortions Decimal @db.Decimal(10, 2)
+  notes        String?
+  active       Boolean @default(true)
+
+  category Category?    @relation(fields: [categoryId], references: [id])
+  items    RecipeItem[]
+}
+
+model RecipeItem {
+  id        String  @id @default(cuid())
+  recipeId  String
+  productId String
+  /// cantidad en unidad base para el rendimiento completo
+  qtyBase   Decimal @db.Decimal(16, 4)
+
+  recipe  Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([recipeId, productId])
+}
+
+// ─────────────────────────  Checklist de suite  ───────────────────────
+
+enum ChecklistItemKind {
+  DOTACION   // control TV, aire, persianas — se verifica, no descuenta
+  CONSUMIBLE // toallas, papel, amenities — descuenta stock al reponer
+}
+
+enum ChecklistItemStatus {
+  PENDIENTE
+  OK
+  FALTANTE
+  DANIADO
+  REPUESTO
+}
+
+model ChecklistTemplate {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  active Boolean @default(true)
+
+  items ChecklistTemplateItem[]
+  runs  ChecklistRun[]
+}
+
+model ChecklistTemplateItem {
+  id          String            @id @default(cuid())
+  templateId  String
+  label       String
+  kind        ChecklistItemKind @default(DOTACION)
+  productId   String?
+  expectedQty Decimal?          @db.Decimal(16, 4)
+  sortOrder   Int               @default(0)
+  requireNote Boolean           @default(false)
+
+  template ChecklistTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  product  Product?           @relation(fields: [productId], references: [id])
+  runItems ChecklistRunItem[]
+
+  @@index([templateId, sortOrder])
+}
+
+model ChecklistRun {
+  id          String    @id @default(cuid())
+  templateId  String
+  roomId      String
+  userId      String
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  note        String?
+
+  template  ChecklistTemplate  @relation(fields: [templateId], references: [id])
+  room      Room               @relation(fields: [roomId], references: [id])
+  user      User               @relation(fields: [userId], references: [id])
+  items     ChecklistRunItem[]
+  movements Movement[]
+
+  @@index([roomId, startedAt])
+}
+
+model ChecklistRunItem {
+  id             String              @id @default(cuid())
+  runId          String
+  templateItemId String
+  status         ChecklistItemStatus @default(PENDIENTE)
+  qty            Decimal?            @db.Decimal(16, 4)
+  note           String?
+
+  run          ChecklistRun          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  templateItem ChecklistTemplateItem @relation(fields: [templateItemId], references: [id])
+
+  @@unique([runId, templateItemId])
+}

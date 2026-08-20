@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/* ══════════════════════════════════════════════════════════════════════
+   CAPORAL — sistema visual
+   Jerarquía por contraste de superficie, no por bordes.
+   Las líneas existen sólo donde separan datos, nunca para "enmarcar".
+   ══════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    /* Superficies — cálidas, no azuladas. Cada nivel sube ~3% de luz. */
+    --canvas: oklch(0.155 0.004 60);
+    --surface: oklch(0.194 0.005 60);
+    --surface-raised: oklch(0.232 0.006 60);
+    --surface-hover: oklch(0.268 0.007 60);
+    --surface-sunken: oklch(0.128 0.004 60);
+
+    --line: oklch(1 0 0 / 0.07);
+    --line-strong: oklch(1 0 0 / 0.13);
+
+    --text: oklch(0.965 0.003 80);
+    --text-soft: oklch(0.72 0.006 70);
+    --text-faint: oklch(0.545 0.006 70);
+
+    /* Acento — sobrescrito por [data-accent] */
+    --accent: oklch(0.62 0.155 28);
+    --accent-hover: oklch(0.67 0.16 28);
+    --accent-ink: oklch(0.145 0.02 28);
+    --accent-soft: oklch(0.62 0.155 28 / 0.16);
+    --accent-line: oklch(0.62 0.155 28 / 0.38);
+
+    /* Señales de estado — fijas, nunca cambian con el acento */
+    --ok: oklch(0.76 0.16 152);
+    --ok-soft: oklch(0.76 0.16 152 / 0.15);
+    --warn: oklch(0.81 0.15 82);
+    --warn-soft: oklch(0.81 0.15 82 / 0.15);
+    --danger: oklch(0.66 0.19 22);
+    --danger-soft: oklch(0.66 0.19 22 / 0.15);
+    --info: oklch(0.72 0.13 234);
+    --info-soft: oklch(0.72 0.13 234 / 0.15);
+
+    /* Códigos de categoría — el color como dato, no como decoración */
+    --cat-amber: oklch(0.82 0.155 78);
+    --cat-sky: oklch(0.74 0.13 233);
+    --cat-coral: oklch(0.7 0.17 33);
+    --cat-violet: oklch(0.68 0.16 296);
+    --cat-mint: oklch(0.79 0.14 165);
+    --cat-rose: oklch(0.72 0.16 5);
+    --cat-slate: oklch(0.66 0.02 250);
+
+    --radius-card: 22px;
+    --radius-control: 14px;
+    --radius-pill: 999px;
+
+    color-scheme: dark;
+  }
+
+  :root[data-theme="light"] {
+    --canvas: oklch(0.975 0.003 80);
+    --surface: oklch(1 0 0);
+    --surface-raised: oklch(0.968 0.004 80);
+    --surface-hover: oklch(0.938 0.005 80);
+    --surface-sunken: oklch(0.945 0.004 80);
+
+    --line: oklch(0.2 0.01 60 / 0.09);
+    --line-strong: oklch(0.2 0.01 60 / 0.16);
+
+    --text: oklch(0.22 0.006 60);
+    --text-soft: oklch(0.46 0.008 60);
+    --text-faint: oklch(0.62 0.008 60);
+
+    --accent-ink: oklch(0.99 0.005 28);
+
+    --ok: oklch(0.56 0.14 152);
+    --warn: oklch(0.62 0.14 70);
+    --danger: oklch(0.56 0.19 25);
+    --info: oklch(0.55 0.14 240);
+
+    --cat-amber: oklch(0.68 0.15 72);
+    --cat-sky: oklch(0.58 0.14 233);
+    --cat-coral: oklch(0.6 0.17 33);
+    --cat-violet: oklch(0.56 0.18 296);
+    --cat-mint: oklch(0.6 0.13 165);
+    --cat-rose: oklch(0.58 0.18 5);
+    --cat-slate: oklch(0.5 0.02 250);
+
+    color-scheme: light;
+  }
+
+  /* ── Acentos seleccionables (ver Ajustes › Apariencia) ── */
+  :root[data-accent="clay"]   { --accent: oklch(0.62 0.155 28);  --accent-hover: oklch(0.67 0.16 28);  --accent-ink: oklch(0.16 0.03 28);  --accent-soft: oklch(0.62 0.155 28 / 0.16);  --accent-line: oklch(0.62 0.155 28 / 0.38); }
+  :root[data-accent="amber"]  { --accent: oklch(0.76 0.16 68);   --accent-hover: oklch(0.81 0.16 68);  --accent-ink: oklch(0.18 0.05 68);  --accent-soft: oklch(0.76 0.16 68 / 0.16);   --accent-line: oklch(0.76 0.16 68 / 0.38); }
+  :root[data-accent="moss"]   { --accent: oklch(0.72 0.15 152);  --accent-hover: oklch(0.77 0.15 152); --accent-ink: oklch(0.17 0.04 152); --accent-soft: oklch(0.72 0.15 152 / 0.16);  --accent-line: oklch(0.72 0.15 152 / 0.38); }
+  :root[data-accent="ocean"]  { --accent: oklch(0.62 0.15 248);  --accent-hover: oklch(0.67 0.15 248); --accent-ink: oklch(0.98 0.01 248); --accent-soft: oklch(0.62 0.15 248 / 0.18);  --accent-line: oklch(0.62 0.15 248 / 0.4); }
+  :root[data-accent="indigo"] { --accent: oklch(0.58 0.19 274);  --accent-hover: oklch(0.63 0.19 274); --accent-ink: oklch(0.98 0.01 274); --accent-soft: oklch(0.58 0.19 274 / 0.2);   --accent-line: oklch(0.58 0.19 274 / 0.42); }
+  :root[data-accent="orchid"] { --accent: oklch(0.65 0.19 315);  --accent-hover: oklch(0.7 0.19 315);  --accent-ink: oklch(0.16 0.05 315); --accent-soft: oklch(0.65 0.19 315 / 0.18);  --accent-line: oklch(0.65 0.19 315 / 0.4); }
+  :root[data-accent="quartz"] { --accent: oklch(0.76 0.09 342);  --accent-hover: oklch(0.81 0.09 342); --accent-ink: oklch(0.18 0.04 342); --accent-soft: oklch(0.76 0.09 342 / 0.16);  --accent-line: oklch(0.76 0.09 342 / 0.38); }
+  :root[data-accent="bone"]   { --accent: oklch(0.9 0.012 80);   --accent-hover: oklch(0.95 0.012 80); --accent-ink: oklch(0.18 0.006 80); --accent-soft: oklch(0.9 0.012 80 / 0.14);   --accent-line: oklch(0.9 0.012 80 / 0.32); }
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--surface-raised);
+  --color-hover: var(--surface-hover);
+  --color-sunken: var(--surface-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--text);
+  --color-soft: var(--text-soft);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-line: var(--accent-line);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, monospace;
+
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background: var(--canvas);
+    /* el rebote de iOS no debe mostrar un color ajeno */
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    background: var(--canvas);
+    color: var(--text);
+    font-family: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Cifras siempre alineadas: en una tabla de inventario esto no es un lujo. */
+  .tnum,
+  input[inputmode="decimal"],
+  input[inputmode="numeric"],
+  table {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text);
+  }
+
+  [data-scroll-x] {
+    scrollbar-width: none;
+  }
+  [data-scroll-x]::-webkit-scrollbar {
+    display: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Zonas seguras para notch y barra de gestos — obligatorio en PWA */
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .mb-safe { margin-bottom: env(safe-area-inset-bottom); }
+  .h-safe-bottom { height: env(safe-area-inset-bottom); }
+
+  .press {
+    transition: transform 120ms cubic-bezier(0.2, 0, 0, 1), background-color 140ms ease;
+  }
+  .press:active {
+    transform: scale(0.975);
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .rise { animation: rise 260ms cubic-bezier(0.2, 0, 0, 1) both; }
+
+  @keyframes sheet-in {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
