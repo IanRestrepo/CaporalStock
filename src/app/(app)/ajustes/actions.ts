@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { ACCENTS, THEMES } from "@/lib/appearance";
@@ -31,9 +30,17 @@ export async function setAppearance(accent: string, theme: string): Promise<Resu
   return { ok: true };
 }
 
-export async function logout() {
+/**
+ * Cierra la sesión borrando la cookie firmada.
+ *
+ * No redirige desde acá a propósito: `redirect()` dentro de una acción es una
+ * excepción, y si quien la llama no espera la promesa, la navegación se pierde
+ * en silencio y el usuario queda adentro creyendo que salió. El cliente navega
+ * después de que esto resuelve, y aunque fallara, el layout de la app ya no
+ * encuentra sesión y lo manda a /entrar igual.
+ */
+export async function logout(): Promise<void> {
   await destroySession();
-  redirect("/entrar");
 }
 
 export async function changePin(current: string, next: string): Promise<Result> {

@@ -130,7 +130,7 @@ export function Rail({ role, name, alertCount }: Props) {
           />
 
           <Link
-            href="/ajustes/perfil"
+            href="/ajustes"
             title={name}
             className="press mt-1 grid size-9 place-items-center rounded-full bg-accent-soft text-2xs font-semibold text-accent"
           >
