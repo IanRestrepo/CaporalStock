@@ -6,7 +6,7 @@ import { formatMoneyCompact } from "@/lib/format";
 import { categoryIcon } from "@/lib/category-icons";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import { NuevaCategoria } from "./nueva-categoria";
+import { NuevaSeccion } from "./nueva-seccion";
 
 export const metadata = { title: "Bodega" };
 
@@ -16,10 +16,10 @@ export default async function BodegasPage() {
 
   /**
    * Una sola bodega guarda el inventario del hotel. Lo que antes eran áreas de
-   * operación ahora son categorías: no otro depósito, sino un atajo al mismo
-   * inventario. Los minibares siguen siendo lugares de verdad — son las suites.
+   * operación ahora son secciones: no otro depósito, sino por dónde se entra al
+   * mismo inventario. Los minibares sí son lugares — son las suites.
    */
-  const [locations, categories] = await Promise.all([
+  const [locations, sections] = await Promise.all([
     prisma.$queryRaw<
       { id: string; name: string; kind: string; room: string | null; value: string; skus: bigint; low: bigint }[]
     >`
@@ -47,29 +47,31 @@ export default async function BodegasPage() {
     prisma.$queryRaw<
       { id: string; name: string; icon: string; value: string; skus: bigint; low: bigint }[]
     >`
-      SELECT c.id,
-             c.name,
-             c.icon,
-             COALESCE(SUM(s.quantity * p."costPrice"), 0)::text AS value,
-             COUNT(p.id)                                        AS skus,
+      SELECT sec.id,
+             sec.name,
+             sec.icon,
+             COALESCE(SUM(st.quantity * p."costPrice"), 0)::text AS value,
+             COUNT(p.id)                                         AS skus,
              COUNT(*) FILTER (
-               WHERE COALESCE(NULLIF(s."minQty", 0), p."minQty") > 0
-                 AND COALESCE(s.quantity, 0) < COALESCE(NULLIF(s."minQty", 0), p."minQty")
+               WHERE COALESCE(NULLIF(st."minQty", 0), p."minQty") > 0
+                 AND COALESCE(st.quantity, 0) < COALESCE(NULLIF(st."minQty", 0), p."minQty")
              ) AS low
-        FROM "Category" c
-        LEFT JOIN "Product"  p ON p."categoryId" = c.id AND p.active
-        LEFT JOIN "Location" b ON b.kind = 'PRINCIPAL' AND b.active
-        LEFT JOIN "Stock"    s ON s."productId" = p.id AND s."locationId" = b.id
-       GROUP BY c.id, c.name, c.icon, c."sortOrder"
-       ORDER BY c."sortOrder", c.name
+        FROM "Section" sec
+        LEFT JOIN "Product"  p  ON p."sectionId" = sec.id AND p.active
+        LEFT JOIN "Location" b  ON b.kind = 'PRINCIPAL' AND b.active
+        LEFT JOIN "Stock"    st ON st."productId" = p.id AND st."locationId" = b.id
+       WHERE sec.active
+       GROUP BY sec.id, sec.name, sec.icon, sec."sortOrder"
+       ORDER BY sec."sortOrder", sec.name
     `,
   ]);
 
   const central = locations.filter((l) => l.kind === "PRINCIPAL");
   const minibars = locations.filter((l) => l.kind === "MINIBAR");
 
+  const plural = (n: number) => `${n} ${n === 1 ? "producto" : "productos"}`;
   const detail = (value: string, skus: bigint, low: bigint) =>
-    `${Number(skus)} ${Number(skus) === 1 ? "producto" : "productos"}` +
+    plural(Number(skus)) +
     (isAdmin ? ` · ${formatMoneyCompact(Number(value))}` : "") +
     (Number(low) > 0 ? ` · ${Number(low)} bajo mínimo` : "");
 
@@ -78,7 +80,7 @@ export default async function BodegasPage() {
       <PageHeader
         title="Bodega"
         subtitle="Todo el inventario vive en la bodega central."
-        action={isAdmin ? <NuevaCategoria /> : null}
+        action={isAdmin ? <NuevaSeccion /> : null}
       />
 
       <div className="space-y-7">
@@ -107,16 +109,16 @@ export default async function BodegasPage() {
           </div>
         </section>
 
-        {categories.length ? (
+        {sections.length ? (
           <section>
-            <SectionLabel className="mb-2.5">Categorías</SectionLabel>
+            <SectionLabel className="mb-2.5">Secciones</SectionLabel>
             <div className="space-y-2">
-              {categories.map((row) => {
+              {sections.map((row) => {
                 const Icon = categoryIcon(row.icon);
                 return (
                   <Card key={row.id} className="p-0">
                     <Link
-                      href={`/bodegas/categoria/${row.id}`}
+                      href={`/bodegas/seccion/${row.id}`}
                       className="press flex items-center gap-3.5 px-4 py-3.5"
                     >
                       <span className="grid size-10 shrink-0 place-items-center rounded-[13px] bg-raised text-soft">
@@ -154,9 +156,7 @@ export default async function BodegasPage() {
                     {Number(row.low) > 0 ? <span className="size-1.5 rounded-full bg-warn" /> : null}
                   </div>
                   <p className="text-[0.9375rem] font-semibold">Suite {row.room}</p>
-                  <p className="mt-0.5 text-[0.8125rem] text-faint tnum">
-                    {Number(row.skus)} {Number(row.skus) === 1 ? "producto" : "productos"}
-                  </p>
+                  <p className="mt-0.5 text-[0.8125rem] text-faint tnum">{plural(Number(row.skus))}</p>
                 </Link>
               ))}
             </div>

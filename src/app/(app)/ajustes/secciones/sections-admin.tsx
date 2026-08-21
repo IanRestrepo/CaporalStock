@@ -9,9 +9,9 @@ import { categoryIcon } from "@/lib/category-icons";
 import { Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { deleteCategory, saveCategory } from "../actions";
+import { deleteSection, saveSection } from "../actions";
 
-export type CategoryAdminRow = {
+export type SectionAdminRow = {
   id: string;
   name: string;
   color: string;
@@ -19,17 +19,17 @@ export type CategoryAdminRow = {
   products: number;
 };
 
-export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[] }) {
+export function SectionsAdmin({ sections }: { sections: SectionAdminRow[] }) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [draft, setDraft] = useState<TaxonomyDraft | null>(null);
-  const [removing, setRemoving] = useState<CategoryAdminRow | null>(null);
+  const [removing, setRemoving] = useState<SectionAdminRow | null>(null);
 
   const remove = () => {
     if (!removing) return;
     startTransition(async () => {
-      const result = await deleteCategory(removing.id);
+      const result = await deleteSection(removing.id);
       if (!result.ok) {
         toast.push("error", result.error);
         return;
@@ -45,7 +45,7 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
     <div>
       <div className="mb-2.5 flex items-center justify-between px-1">
         <p className="text-2xs font-medium tracking-[0.12em] text-faint uppercase">
-          Categorías · {categories.length}
+          Secciones · {sections.length}
         </p>
         <Button size="sm" variant="quiet" onClick={() => setDraft(BLANK_TAXONOMY)}>
           <Plus className="size-4" />
@@ -54,18 +54,18 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
       </div>
 
       <div className="divide-y divide-line overflow-hidden rounded-card bg-surface">
-        {categories.map((category) => {
-          const Icon = categoryIcon(category.icon);
+        {sections.map((section) => {
+          const Icon = categoryIcon(section.icon);
           return (
             <button
-              key={category.id}
+              key={section.id}
               type="button"
               onClick={() =>
                 setDraft({
-                  id: category.id,
-                  name: category.name,
-                  color: category.color,
-                  icon: category.icon,
+                  id: section.id,
+                  name: section.name,
+                  color: section.color,
+                  icon: section.icon,
                 })
               }
               className="press flex w-full items-center gap-3.5 px-5 py-3.5 text-left hover:bg-raised"
@@ -73,45 +73,42 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
               <span
                 aria-hidden
                 className="grid size-9 shrink-0 place-items-center rounded-[12px]"
-                style={{
-                  background: categoryColor(category.color),
-                  color: "oklch(0.18 0.01 60)",
-                }}
+                style={{ background: categoryColor(section.color), color: "oklch(0.18 0.01 60)" }}
               >
                 <Icon className="size-4" strokeWidth={2} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.9375rem]">{category.name}</span>
+                <span className="block truncate text-[0.9375rem]">{section.name}</span>
                 <span className="block text-[0.8125rem] text-faint tnum">
-                  {category.products} producto{category.products === 1 ? "" : "s"}
+                  {section.products} producto{section.products === 1 ? "" : "s"}
                 </span>
               </span>
             </button>
           );
         })}
-        {categories.length === 0 ? (
+        {sections.length === 0 ? (
           <p className="px-5 py-4 text-[0.8125rem] text-faint">
-            Sin categorías. Creá al menos una para poder cargar productos.
+            Sin secciones. Son las que aparecen en la pantalla de Bodega.
           </p>
         ) : null}
       </div>
 
       <p className="mt-2.5 px-1 text-[0.8125rem] text-faint">
-        La categoría dice QUÉ es el producto y le da el color con el que se reconoce en una lista.
-        Dónde se usa lo dice la sección, que es otra cosa.
+        La sección dice DÓNDE se usa el producto — lavandería, cocina, decoración — y es la lista
+        que se ve en Bodega. Qué es el producto lo dice la categoría, que es otra cosa.
       </p>
 
       <Sheet
         open={draft !== null}
         onClose={() => setDraft(null)}
-        title={draft?.id ? "Editar categoría" : "Nueva categoría"}
+        title={draft?.id ? "Editar sección" : "Nueva sección"}
       >
         {draft ? (
           <TaxonomyForm
             draft={draft}
             submitLabel="Guardar"
-            placeholder="p. ej. Bebidas"
-            save={saveCategory}
+            placeholder="p. ej. Lavandería"
+            save={saveSection}
             onDone={() => setDraft(null)}
           >
             {draft.id ? (
@@ -121,12 +118,12 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
                 className="w-full"
                 disabled={pending}
                 onClick={() => {
-                  const row = categories.find((c) => c.id === draft.id);
+                  const row = sections.find((s) => s.id === draft.id);
                   if (row) setRemoving(row);
                 }}
               >
                 <Trash2 className="size-4" />
-                Borrar categoría
+                Borrar sección
               </Button>
             ) : null}
           </TaxonomyForm>
@@ -136,10 +133,10 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
       <Sheet
         open={removing !== null}
         onClose={() => setRemoving(null)}
-        title="¿Borrar la categoría?"
+        title="¿Borrar la sección?"
         description={
           removing
-            ? `${removing.name} desaparece de la bodega. Sólo se puede borrar si no le queda ningún producto.`
+            ? `${removing.name} desaparece de la pantalla de Bodega. Sólo se puede borrar si no le queda ningún producto.`
             : undefined
         }
       >

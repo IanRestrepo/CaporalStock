@@ -9,6 +9,11 @@ const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "El nombre es muy corto."),
   categoryId: z.string().min(1, "Elegí una categoría."),
+  sectionId: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((value) => value || null),
   baseUnit: z.enum(["GRAMO", "MILILITRO", "UNIDAD"]),
   costPrice: z.number().min(0),
   salePrice: z.number().min(0),

@@ -84,6 +84,24 @@ enum BaseUnit {
   UNIDAD
 }
 
+/// En qué parte del hotel se usa lo que hay adentro. Es lo que antes eran las
+/// áreas de operación: sigue siendo la misma bodega, sólo cambia por dónde se
+/// entra. No confundir con Category, que dice QUÉ es el producto.
+model Section {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  color     String  @default("slate")
+  icon      String  @default("package")
+  sortOrder Int     @default(0)
+  active    Boolean @default(true)
+
+  products Product[]
+
+  @@index([active, sortOrder])
+}
+
+/// Qué es el producto: bebida, snack, amenity. Da el color con el que se
+/// reconoce en una lista y el filtro rápido dentro de una sección.
 model Category {
   id    String @id @default(cuid())
   name  String @unique
@@ -99,6 +117,8 @@ model Product {
   name        String
   sku         String?  @unique
   categoryId  String
+  /// Opcional: un producto puede existir sin decidir todavía dónde se usa.
+  sectionId   String?
   baseUnit    BaseUnit
   /// costo por UNIDAD BASE (ej. 0.0042 por gramo) — promedio ponderado
   costPrice   Decimal  @default(0) @db.Decimal(14, 6)
@@ -111,6 +131,7 @@ model Product {
   createdAt   DateTime @default(now())
 
   category      Category       @relation(fields: [categoryId], references: [id])
+  section       Section?       @relation(fields: [sectionId], references: [id])
   presentations Presentation[]
   stock         Stock[]
   lots          Lot[]
@@ -119,6 +140,7 @@ model Product {
   checklistItems ChecklistTemplateItem[]
 
   @@index([categoryId, active])
+  @@index([sectionId, active])
   @@index([name])
 }
 

@@ -8,9 +8,11 @@ import { useState } from "react";
 export function ProductAdmin({
   product,
   categories,
+  sections,
 }: {
   product: ProductDraft;
   categories: { id: string; name: string }[];
+  sections: { id: string; name: string }[];
 }) {
   const [open, setOpen] = useState(false);
 
@@ -24,6 +26,7 @@ export function ProductAdmin({
         onClose={() => setOpen(false)}
         draft={product}
         categories={categories}
+        sections={sections}
       />
     </>
   );

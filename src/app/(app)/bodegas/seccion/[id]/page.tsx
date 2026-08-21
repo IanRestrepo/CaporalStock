@@ -10,31 +10,31 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { centralLocation, centralStock } from "@/lib/warehouse";
 
-export default async function CategoriaPage({ params }: PageProps<"/bodegas/categoria/[id]">) {
+export default async function SeccionPage({ params }: PageProps<"/bodegas/seccion/[id]">) {
   const { id } = await params;
   const user = await requireUser();
 
   /**
-   * Una categoría no es otra bodega: es la misma bodega central mirada por una
-   * rendija. Por eso la pantalla es la de una bodega, con el mismo encabezado
-   * y las mismas acciones — sólo cambia qué entra en la lista.
+   * Una sección no es otra bodega: es la bodega central mirada por una rendija.
+   * Por eso la pantalla es la de una bodega, con el mismo encabezado y las
+   * mismas acciones — sólo cambia qué entra en la lista.
    */
-  const [category, central] = await Promise.all([
-    prisma.category.findUnique({ where: { id }, select: { id: true, name: true } }),
+  const [section, central] = await Promise.all([
+    prisma.section.findUnique({ where: { id }, select: { id: true, name: true } }),
     centralLocation(),
   ]);
 
-  if (!category || !central) notFound();
+  if (!section || !central) notFound();
 
   const isAdmin = user.role === "ADMIN";
-  const { items, categories, value } = await centralStock(central.id, category.id);
+  const { items, categories, sections, value } = await centralStock(central.id, section.id);
 
   const withStock = items.filter((i) => i.quantity > 0).length;
   const low = items.filter((i) => i.threshold > 0 && i.quantity < i.threshold).length;
 
   return (
     <Screen>
-      <PageHeader back={{ href: "/bodegas" }} eyebrow={central.name} title={category.name} />
+      <PageHeader back={{ href: "/bodegas" }} eyebrow={central.name} title={section.name} />
 
       <Card className="mb-4 px-5 py-4">
         <StatRow
@@ -68,8 +68,8 @@ export default async function CategoriaPage({ params }: PageProps<"/bodegas/cate
       <StockExplorer
         items={items}
         hrefBase="/productos"
-        admin={isAdmin ? { categories, defaultCategoryId: category.id } : undefined}
-        emptyBody={`Todavía no hay nada en ${category.name}. Creá un producto y elegile esta categoría.`}
+        admin={isAdmin ? { categories, sections, defaultSectionId: section.id } : undefined}
+        emptyBody={`Todavía no hay nada en ${section.name}. Creá un producto y asignalo a esta sección.`}
       />
     </Screen>
   );

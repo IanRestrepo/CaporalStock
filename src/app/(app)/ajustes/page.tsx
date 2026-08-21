@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ChevronRight,
   ClipboardList,
+  LayoutGrid,
   MapPin,
   Shapes,
   Palette,
@@ -28,9 +29,15 @@ export default async function AjustesPage() {
   const adminLinks = [
     { href: "/ajustes/equipo", label: "Equipo", hint: "Usuarios, roles y PIN", icon: Users },
     {
+      href: "/ajustes/secciones",
+      label: "Secciones",
+      hint: "Dónde se usa: lavandería, cocina…",
+      icon: LayoutGrid,
+    },
+    {
       href: "/ajustes/categorias",
       label: "Categorías",
-      hint: "Con qué se ordena la bodega",
+      hint: "Qué es: bebida, snack, amenity…",
       icon: Shapes,
     },
     {

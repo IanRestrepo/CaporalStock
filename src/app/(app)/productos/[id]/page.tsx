@@ -17,7 +17,7 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
   const { id } = await params;
   const user = await requireUser();
 
-  const [product, categories] = await Promise.all([
+  const [product, categories, sections] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       select: {
@@ -29,7 +29,9 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
         minQty: true,
         perishable: true,
         active: true,
+        sectionId: true,
         category: { select: { id: true, name: true, color: true } },
+        section: { select: { name: true } },
         presentations: {
           orderBy: { factor: "asc" },
           select: { id: true, name: true, factor: true },
@@ -52,6 +54,11 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
       },
     }),
     prisma.category.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, name: true } }),
+    prisma.section.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
+    }),
   ]);
 
   if (!product) notFound();
@@ -91,7 +98,9 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
     <Screen>
       <PageHeader
         back={{ href: "/productos" }}
-        eyebrow={product.category.name}
+        eyebrow={
+          product.section ? `${product.section.name} · ${product.category.name}` : product.category.name
+        }
         title={product.name}
         action={
           isAdmin ? (
@@ -100,6 +109,7 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
                 id: product.id,
                 name: product.name,
                 categoryId: product.category.id,
+                sectionId: product.sectionId,
                 baseUnit: product.baseUnit,
                 costPrice: cost,
                 salePrice: sale,
@@ -108,6 +118,7 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
                 active: product.active,
               }}
               categories={categories}
+              sections={sections}
             />
           ) : null
         }

@@ -141,6 +141,63 @@ export async function renameLocation(input: unknown): Promise<Result> {
   }
 }
 
+const taxonomySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(2, "El nombre es muy corto."),
+  color: z.string().trim().min(1),
+  icon: z.string().trim().min(1),
+});
+
+/**
+ * Secciones: por dónde se entra a la bodega. Son lo que antes eran las áreas de
+ * operación — lavandería, cocina, decoración — pero ya no son otro depósito.
+ */
+export async function saveSection(input: unknown): Promise<Result> {
+  const parsed = taxonomySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos incompletos." };
+  }
+
+  const { user, error } = await actor("ADMIN");
+  if (!user) return { ok: false, error };
+
+  const { id, ...data } = parsed.data;
+
+  try {
+    if (id) {
+      await prisma.section.update({ where: { id }, data });
+    } else {
+      const count = await prisma.section.count();
+      await prisma.section.create({ data: { ...data, sortOrder: count + 1 } });
+    }
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Ya existe una sección con ese nombre." };
+  }
+}
+
+export async function deleteSection(id: string): Promise<Result> {
+  const { user, error } = await actor("ADMIN");
+  if (!user) return { ok: false, error };
+
+  const products = await prisma.product.count({ where: { sectionId: id } });
+  if (products > 0) {
+    return {
+      ok: false,
+      error: `Todavía hay ${products} producto${products === 1 ? "" : "s"} en esta sección. Movelos primero.`,
+    };
+  }
+
+  try {
+    await prisma.section.delete({ where: { id } });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "No se pudo borrar la sección." };
+  }
+}
+
 const categorySchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "El nombre es muy corto."),

@@ -6,26 +6,30 @@ import { useToast } from "@/components/ui/toast";
 import { CATEGORY_COLORS } from "@/lib/appearance";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { cn } from "@/lib/cn";
-import { saveCategory } from "@/app/(app)/ajustes/actions";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
 
-export type CategoryDraft = { id?: string; name: string; color: string; icon: string };
+export type TaxonomyDraft = { id?: string; name: string; color: string; icon: string };
 
-export const BLANK_CATEGORY: CategoryDraft = { name: "", color: "slate", icon: "package" };
+export const BLANK_TAXONOMY: TaxonomyDraft = { name: "", color: "slate", icon: "package" };
 
 /**
- * Nombre, color e ícono. Los tres importan: en una lista larga el disco de
- * color es lo que hace que la categoría se encuentre sin leer.
+ * Nombre, color e ícono. Lo usan las secciones y las categorías: son dos cosas
+ * distintas del inventario pero se describen igual, y el disco de color es lo
+ * que hace que cualquiera de las dos se encuentre en una lista sin leer.
  */
-export function CategoryForm({
+export function TaxonomyForm({
   draft,
   submitLabel,
+  placeholder,
+  save,
   onDone,
   children,
 }: {
-  draft: CategoryDraft;
+  draft: TaxonomyDraft;
   submitLabel: string;
+  placeholder: string;
+  save: (input: TaxonomyDraft) => Promise<{ ok: true } | { ok: false; error: string }>;
   onDone?: () => void;
   children?: ReactNode;
 }) {
@@ -36,12 +40,12 @@ export function CategoryForm({
 
   const submit = () => {
     startTransition(async () => {
-      const result = await saveCategory(form);
+      const result = await save(form);
       if (!result.ok) {
         toast.push("error", result.error);
         return;
       }
-      toast.push("ok", form.id ? "Categoría guardada." : "Categoría creada.");
+      toast.push("ok", "Listo.");
       router.refresh();
       onDone?.();
     });
@@ -49,12 +53,12 @@ export function CategoryForm({
 
   return (
     <div className="space-y-4">
-      <Field label="Nombre" htmlFor="categoria-nombre">
+      <Field label="Nombre" htmlFor="taxonomia-nombre">
         <Input
-          id="categoria-nombre"
+          id="taxonomia-nombre"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="p. ej. Decoración"
+          placeholder={placeholder}
         />
       </Field>
 

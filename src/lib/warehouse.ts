@@ -19,10 +19,10 @@ export function centralLocation() {
  * creado todavía no tiene fila en Stock, y si la lista se armara desde ahí
  * desaparecería justo después de crearlo.
  */
-export async function centralStock(locationId: string, categoryId?: string) {
-  const [products, categories] = await Promise.all([
+export async function centralStock(locationId: string, sectionId?: string) {
+  const [products, categories, sections] = await Promise.all([
     prisma.product.findMany({
-      where: { active: true, ...(categoryId ? { categoryId } : {}) },
+      where: { active: true, ...(sectionId ? { sectionId } : {}) },
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -33,11 +33,17 @@ export async function centralStock(locationId: string, categoryId?: string) {
         salePrice: true,
         perishable: true,
         categoryId: true,
+        sectionId: true,
         category: { select: { name: true, color: true } },
         stock: { where: { locationId }, select: { quantity: true, minQty: true } },
       },
     }),
     prisma.category.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true },
+    }),
+    prisma.section.findMany({
+      where: { active: true },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: { id: true, name: true },
     }),
@@ -58,6 +64,7 @@ export async function centralStock(locationId: string, categoryId?: string) {
         id: product.id,
         name: product.name,
         categoryId: product.categoryId,
+        sectionId: product.sectionId,
         baseUnit: product.baseUnit,
         costPrice: num(product.costPrice),
         salePrice: num(product.salePrice),
@@ -74,5 +81,5 @@ export async function centralStock(locationId: string, categoryId?: string) {
     0,
   );
 
-  return { items, categories, value };
+  return { items, categories, sections, value };
 }

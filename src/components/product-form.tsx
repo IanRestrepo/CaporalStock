@@ -16,6 +16,8 @@ export type ProductDraft = {
   id?: string;
   name: string;
   categoryId: string;
+  /** Dónde se usa. Es la lista que se ve en Bodega; puede quedar sin asignar. */
+  sectionId: string | null;
   baseUnit: BaseUnit;
   costPrice: number;
   salePrice: number;
@@ -27,11 +29,13 @@ export type ProductDraft = {
 export function ProductForm({
   draft,
   categories,
+  sections,
   onDone,
   submitLabel,
 }: {
   draft: ProductDraft;
   categories: { id: string; name: string }[];
+  sections: { id: string; name: string }[];
   onDone?: (id: string) => void;
   submitLabel: string;
 }) {
@@ -76,7 +80,26 @@ export function ProductForm({
         />
       </Field>
 
-      <Field label="Categoría" htmlFor="categoria">
+      <Field
+        label="Sección"
+        htmlFor="seccion"
+        hint="Dónde se usa. Es la lista que se ve en Bodega."
+      >
+        <Select
+          id="seccion"
+          value={form.sectionId ?? ""}
+          onChange={(e) => setForm({ ...form, sectionId: e.target.value || null })}
+        >
+          <option value="">Sin asignar</option>
+          {sections.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field label="Categoría" htmlFor="categoria" hint="Qué es. Le da el color en las listas.">
         <Select
           id="categoria"
           value={form.categoryId}
@@ -239,17 +262,20 @@ export function ProductSheet({
   onClose,
   draft,
   categories,
+  sections,
 }: {
   open: boolean;
   onClose: () => void;
   draft: ProductDraft;
   categories: { id: string; name: string }[];
+  sections: { id: string; name: string }[];
 }) {
   return (
     <Sheet open={open} onClose={onClose} title="Editar producto">
       <ProductForm
         draft={draft}
         categories={categories}
+        sections={sections}
         submitLabel="Guardar cambios"
         onDone={onClose}
       />

@@ -15,16 +15,24 @@ const prisma = new PrismaClient({
  * un administrador, la bodega central y las categorías con las que se ordena.
  */
 
+/** Por dónde se entra a la bodega. Antes eran las áreas de operación. */
+const SECTIONS = [
+  { name: "Lavandería", color: "sky", icon: "washing-machine", sortOrder: 1 },
+  { name: "Cocina", color: "coral", icon: "chef-hat", sortOrder: 2 },
+  { name: "Aseo y mantenimiento", color: "mint", icon: "spray-can", sortOrder: 3 },
+  { name: "Decoración", color: "violet", icon: "lamp", sortOrder: 4 },
+];
+
+/** Qué es el producto. Da el color y el filtro rápido dentro de la lista. */
 const CATEGORIES = [
   { name: "Bebidas", color: "sky", icon: "cup-soda", sortOrder: 1 },
   { name: "Snacks", color: "amber", icon: "cookie", sortOrder: 2 },
   { name: "Amenities", color: "violet", icon: "sparkles", sortOrder: 3 },
   { name: "Lencería", color: "rose", icon: "bed-double", sortOrder: 4 },
-  { name: "Aseo", color: "mint", icon: "spray-can", sortOrder: 5 },
-  { name: "Lavandería", color: "sky", icon: "washing-machine", sortOrder: 6 },
-  { name: "Cocina", color: "coral", icon: "chef-hat", sortOrder: 7 },
-  { name: "Decoración", color: "violet", icon: "lamp", sortOrder: 8 },
-  { name: "Mantenimiento", color: "slate", icon: "wrench", sortOrder: 9 },
+  { name: "Limpieza", color: "mint", icon: "spray-can", sortOrder: 5 },
+  { name: "Alimentos", color: "coral", icon: "utensils", sortOrder: 6 },
+  { name: "Menaje", color: "slate", icon: "sofa", sortOrder: 7 },
+  { name: "Herramientas", color: "slate", icon: "wrench", sortOrder: 8 },
 ];
 
 async function main() {
@@ -43,6 +51,7 @@ async function main() {
   await prisma.presentation.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
+  await prisma.section.deleteMany();
   await prisma.location.deleteMany();
   await prisma.room.deleteMany();
   await prisma.user.deleteMany();
@@ -63,7 +72,8 @@ async function main() {
     data: { name: "Bodega central", kind: "PRINCIPAL", sortOrder: 0 },
   });
 
-  console.log("→ categorías");
+  console.log("→ secciones y categorías");
+  await prisma.section.createMany({ data: SECTIONS });
   await prisma.category.createMany({ data: CATEGORIES });
 
   console.log("\n✓ Listo. Entrá con  admin / 2468");

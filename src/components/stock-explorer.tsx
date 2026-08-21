@@ -31,7 +31,9 @@ export type StockItem = {
 /** Lo que hace falta para crear o corregir un producto sin salir de la lista. */
 export type StockAdmin = {
   categories: { id: string; name: string }[];
-  defaultCategoryId?: string;
+  sections: { id: string; name: string }[];
+  /** Al crear desde una sección, ya viene puesta. */
+  defaultSectionId?: string;
 };
 
 /**
@@ -79,7 +81,8 @@ export function StockExplorer({
   const blank: ProductDraft | null = admin
     ? {
         name: "",
-        categoryId: admin.defaultCategoryId ?? admin.categories[0]?.id ?? "",
+        categoryId: admin.categories[0]?.id ?? "",
+        sectionId: admin.defaultSectionId ?? null,
         baseUnit: "UNIDAD",
         costPrice: 0,
         salePrice: 0,
@@ -217,6 +220,7 @@ export function StockExplorer({
               <ProductForm
                 draft={editing}
                 categories={admin.categories}
+                sections={admin.sections}
                 submitLabel={editing.id ? "Guardar cambios" : "Crear producto"}
                 onDone={() => setEditing(null)}
               />

@@ -53,7 +53,7 @@ export default async function BodegaPage({ params }: PageProps<"/bodegas/[id]">)
    * todavía no tiene saldo, y si no apareciera acá no habría dónde cargarlo.
    * Un minibar, en cambio, sólo muestra lo que se le montó.
    */
-  const { items, categories } = isCentral
+  const { items, categories, sections } = isCentral
     ? await centralStock(location.id)
     : {
         items: location.stock.map((row) => ({
@@ -67,6 +67,7 @@ export default async function BodegaPage({ params }: PageProps<"/bodegas/[id]">)
           par: row.parQty ? num(row.parQty) : null,
         })) satisfies StockItem[],
         categories: [] as { id: string; name: string }[],
+        sections: [] as { id: string; name: string }[],
       };
 
   const value = location.stock.reduce(
@@ -116,10 +117,10 @@ export default async function BodegaPage({ params }: PageProps<"/bodegas/[id]">)
       <StockExplorer
         items={items}
         hrefBase="/productos"
-        admin={isAdmin && isCentral ? { categories } : undefined}
+        admin={isAdmin && isCentral ? { categories, sections } : undefined}
         emptyBody={
           isCentral
-            ? "La bodega arranca vacía. Creá el primer producto y elegile su categoría."
+            ? "La bodega arranca vacía. Creá el primer producto y decile en qué sección se usa."
             : "Este minibar todavía no tiene nada. Trasladá productos desde la bodega central."
         }
       />

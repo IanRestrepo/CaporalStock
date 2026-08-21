@@ -8,10 +8,17 @@ export const metadata = { title: "Nuevo producto" };
 export default async function NuevoProductoPage() {
   await requireAdminPage();
 
-  const categories = await prisma.category.findMany({
-    orderBy: { sortOrder: "asc" },
-    select: { id: true, name: true },
-  });
+  const [categories, sections] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.section.findMany({
+      where: { active: true },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
 
   return (
     <Screen>
@@ -21,7 +28,7 @@ export default async function NuevoProductoPage() {
         subtitle="Elegí bien la unidad base: no se puede cambiar después."
       />
       <div className="rounded-card bg-surface p-4">
-        <NewProduct categories={categories} />
+        <NewProduct categories={categories} sections={sections} />
       </div>
     </Screen>
   );
