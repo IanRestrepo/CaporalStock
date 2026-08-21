@@ -39,10 +39,11 @@ model User {
 
 // ────────────────────────────  Ubicaciones  ───────────────────────────
 
+/// Sólo hay dos clases de lugar: la bodega central y la nevera de cada suite.
+/// El inventario del hotel vive en una sola bodega; las categorías lo ordenan.
 enum LocationKind {
   PRINCIPAL // bodega central
   MINIBAR   // nevera de una suite
-  AREA      // lavandería, cocina, mantenimiento…
 }
 
 model Location {
@@ -91,7 +92,6 @@ model Category {
   sortOrder Int @default(0)
 
   products Product[]
-  recipes  Recipe[]
 }
 
 model Product {
@@ -116,7 +116,6 @@ model Product {
   lots          Lot[]
   movementLines MovementLine[]
   purchaseItems PurchaseItem[]
-  recipeItems   RecipeItem[]
   checklistItems ChecklistTemplateItem[]
 
   @@index([categoryId, active])
@@ -183,7 +182,7 @@ model Lot {
 
 enum MovementType {
   ENTRADA    // compra o carga inicial — solo admin
-  TRASLADO   // bodega -> minibar / cocina / lavandería
+  TRASLADO   // bodega central -> minibar de una suite
   CONSUMO    // venta o uso: sale del inventario
   DANIO      // merma, rotura, vencido
   AJUSTE     // corrección de conteo — solo admin
@@ -306,34 +305,6 @@ model PurchaseItem {
   lot          Lot?          @relation(fields: [lotId], references: [id])
 
   @@index([purchaseId])
-}
-
-// ──────────────────────────  Cocina / recetas  ────────────────────────
-
-model Recipe {
-  id           String  @id @default(cuid())
-  name         String  @unique
-  categoryId   String?
-  /// porciones que rinde la receta completa
-  yieldPortions Decimal @db.Decimal(10, 2)
-  notes        String?
-  active       Boolean @default(true)
-
-  category Category?    @relation(fields: [categoryId], references: [id])
-  items    RecipeItem[]
-}
-
-model RecipeItem {
-  id        String  @id @default(cuid())
-  recipeId  String
-  productId String
-  /// cantidad en unidad base para el rendimiento completo
-  qtyBase   Decimal @db.Decimal(16, 4)
-
-  recipe  Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-
-  @@unique([recipeId, productId])
 }
 
 // ─────────────────────────  Checklist de suite  ───────────────────────

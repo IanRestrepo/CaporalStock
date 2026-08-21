@@ -3,7 +3,6 @@ import {
   formatQty,
   fromBase,
   parseNumber,
-  portionsAvailable,
   toBase,
 } from "@/lib/units";
 
@@ -36,19 +35,5 @@ describe("conversión de unidades", () => {
     expect(parseNumber("1,250.5")).toBe(1250.5);
     expect(parseNumber("")).toBeNull();
     expect(parseNumber("abc")).toBeNull();
-  });
-});
-
-describe("porciones de cocina", () => {
-  test("dice cuántas porciones completas alcanzan", () => {
-    // La receta rinde 10 porciones con 180 g: 18 g por porción.
-    expect(portionsAvailable(1800, 180, 10)).toBe(100);
-    expect(portionsAvailable(180, 180, 10)).toBe(10);
-    expect(portionsAvailable(100, 180, 10)).toBe(5);
-  });
-
-  test("nunca promete porciones a medias", () => {
-    expect(portionsAvailable(25, 180, 10)).toBe(1);
-    expect(portionsAvailable(0, 180, 10)).toBe(0);
   });
 });

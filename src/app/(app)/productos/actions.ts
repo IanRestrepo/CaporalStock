@@ -99,3 +99,45 @@ export async function setThresholds(input: unknown): Promise<SaveResult> {
     return { ok: false, error: "No se pudo guardar el mínimo." };
   }
 }
+
+export type DeleteResult =
+  | { ok: true; archived: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Borra un producto desde la bodega, sin entrar a su ficha.
+ *
+ * Si nunca se movió, se va de verdad (con sus presentaciones y saldos en
+ * cero). Si ya tiene historial, se archiva: borrarlo dejaría movimientos,
+ * compras y checklists apuntando al vacío, y el pasado del inventario no se
+ * reescribe.
+ */
+export async function deleteProduct(id: string): Promise<DeleteResult> {
+  const { user, error } = await actor("ADMIN");
+  if (!user) return { ok: false, error };
+
+  try {
+    const [lines, purchases, checklists, stock] = await Promise.all([
+      prisma.movementLine.count({ where: { productId: id } }),
+      prisma.purchaseItem.count({ where: { productId: id } }),
+      prisma.checklistTemplateItem.count({ where: { productId: id } }),
+      prisma.stock.aggregate({ where: { productId: id }, _sum: { quantity: true } }),
+    ]);
+
+    const hasHistory = lines > 0 || purchases > 0 || checklists > 0;
+    const remaining = Number(stock._sum.quantity ?? 0);
+
+    if (hasHistory || remaining !== 0) {
+      await prisma.product.update({ where: { id }, data: { active: false } });
+      revalidatePath("/", "layout");
+      return { ok: true, archived: true };
+    }
+
+    await prisma.product.delete({ where: { id } });
+    revalidatePath("/", "layout");
+    return { ok: true, archived: false };
+  } catch (err) {
+    console.error(err);
+    return { ok: false, error: "No se pudo borrar el producto." };
+  }
+}

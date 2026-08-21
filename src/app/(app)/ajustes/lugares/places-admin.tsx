@@ -1,52 +1,38 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Field, Input, Select } from "@/components/ui/field";
+import { Field, Input } from "@/components/ui/field";
 import { Sheet } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/product-form";
 import { useToast } from "@/components/ui/toast";
-import { Plus, Refrigerator, Warehouse, Wrench } from "lucide-react";
+import { Plus, Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { saveLocation, saveRoom } from "../actions";
+import { renameLocation, saveRoom } from "../actions";
 
-type Kind = "PRINCIPAL" | "AREA" | "MINIBAR";
-
-export type Place = {
-  id: string;
-  name: string;
-  kind: Kind;
-  active: boolean;
-  room: string | null;
-  items: number;
-};
+export type Place = { id: string; name: string; items: number };
 
 export type RoomRow = { id: string; number: string; floor: string | null; active: boolean };
 
-const ICON = { PRINCIPAL: Warehouse, AREA: Wrench, MINIBAR: Refrigerator } as const;
-
-export function PlacesAdmin({ places, rooms }: { places: Place[]; rooms: RoomRow[] }) {
+export function PlacesAdmin({ central, rooms }: { central: Place | null; rooms: RoomRow[] }) {
   const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
-  const [location, setLocation] = useState<
-    { id?: string; name: string; kind: Kind; active: boolean } | null
-  >(null);
+  const [name, setName] = useState<string | null>(null);
   const [room, setRoom] = useState<
     { id?: string; number: string; floor: string; active: boolean } | null
   >(null);
 
   const saveL = () => {
-    if (!location) return;
+    if (!central || name === null) return;
     startTransition(async () => {
-      const result = await saveLocation(location);
+      const result = await renameLocation({ id: central.id, name });
       if (!result.ok) {
         toast.push("error", result.error);
         return;
       }
       toast.push("ok", "Bodega guardada.");
-      setLocation(null);
+      setName(null);
       router.refresh();
     });
   };
@@ -68,52 +54,34 @@ export function PlacesAdmin({ places, rooms }: { places: Place[]; rooms: RoomRow
   return (
     <div className="space-y-8">
       <section>
-        <div className="mb-2.5 flex items-center justify-between px-1">
-          <p className="text-2xs font-medium tracking-[0.12em] text-faint uppercase">Bodegas</p>
-          <Button
-            size="sm"
-            variant="quiet"
-            onClick={() => setLocation({ name: "", kind: "AREA", active: true })}
-          >
-            <Plus className="size-4" />
-            Nueva
-          </Button>
-        </div>
+        <p className="mb-2.5 px-1 text-2xs font-medium tracking-[0.12em] text-faint uppercase">
+          Bodega central
+        </p>
 
-        <div className="divide-y divide-line overflow-hidden rounded-card bg-surface">
-          {places
-            .filter((p) => p.kind !== "MINIBAR")
-            .map((place) => {
-              const Icon = ICON[place.kind];
-              return (
-                <button
-                  key={place.id}
-                  type="button"
-                  onClick={() =>
-                    setLocation({
-                      id: place.id,
-                      name: place.name,
-                      kind: place.kind,
-                      active: place.active,
-                    })
-                  }
-                  className="press flex w-full items-center gap-3.5 px-5 py-3.5 text-left hover:bg-raised"
-                >
-                  <Icon className="size-[18px] shrink-0 text-faint" strokeWidth={1.75} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[0.9375rem]">{place.name}</span>
-                    <span className="block text-[0.8125rem] text-faint tnum">
-                      {place.items} productos
-                    </span>
-                  </span>
-                  {place.kind === "PRINCIPAL" ? <Badge tone="accent">principal</Badge> : null}
-                  {!place.active ? <Badge>inactiva</Badge> : null}
-                </button>
-              );
-            })}
+        <div className="overflow-hidden rounded-card bg-surface">
+          {central ? (
+            <button
+              type="button"
+              onClick={() => setName(central.name)}
+              className="press flex w-full items-center gap-3.5 px-5 py-3.5 text-left hover:bg-raised"
+            >
+              <Warehouse className="size-[18px] shrink-0 text-faint" strokeWidth={1.75} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[0.9375rem]">{central.name}</span>
+                <span className="block text-[0.8125rem] text-faint tnum">
+                  {central.items} producto{central.items === 1 ? "" : "s"} con saldo
+                </span>
+              </span>
+            </button>
+          ) : (
+            <p className="px-5 py-4 text-[0.8125rem] text-faint">
+              No hay bodega central. Corré el seed para crearla.
+            </p>
+          )}
         </div>
         <p className="mt-2.5 px-1 text-[0.8125rem] text-faint">
-          Los minibares no se crean acá: nacen con cada habitación.
+          El hotel tiene una sola bodega: lo que la ordena por dentro son las categorías. Los
+          minibares no se crean acá, nacen con cada habitación.
         </p>
       </section>
 
@@ -132,60 +100,46 @@ export function PlacesAdmin({ places, rooms }: { places: Place[]; rooms: RoomRow
           </Button>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {rooms.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() =>
-                setRoom({ id: r.id, number: r.number, floor: r.floor ?? "", active: r.active })
-              }
-              className="press rounded-[16px] bg-surface py-4 text-center hover:bg-raised"
-            >
-              <span className="block text-[1.125rem] font-semibold tnum">{r.number}</span>
-              <span className="mt-0.5 block text-2xs text-faint">
-                {r.active ? (r.floor ?? "—") : "inactiva"}
-              </span>
-            </button>
-          ))}
-        </div>
+        {rooms.length ? (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {rooms.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() =>
+                  setRoom({ id: r.id, number: r.number, floor: r.floor ?? "", active: r.active })
+                }
+                className="press rounded-[16px] bg-surface py-4 text-center hover:bg-raised"
+              >
+                <span className="block text-[1.125rem] font-semibold tnum">{r.number}</span>
+                <span className="mt-0.5 block text-2xs text-faint">
+                  {r.active ? (r.floor ?? "—") : "inactiva"}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-card bg-surface px-5 py-4 text-[0.8125rem] text-faint">
+            Todavía no hay habitaciones. Cada una nace con su minibar.
+          </p>
+        )}
       </section>
 
-      <Sheet
-        open={location !== null}
-        onClose={() => setLocation(null)}
-        title={location?.id ? "Editar bodega" : "Nueva bodega"}
-      >
-        {location ? (
+      <Sheet open={name !== null} onClose={() => setName(null)} title="Editar bodega">
+        {name !== null ? (
           <div className="space-y-4">
             <Field label="Nombre">
               <Input
-                value={location.name}
-                onChange={(e) => setLocation({ ...location, name: e.target.value })}
-                placeholder="p. ej. Lavandería"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="p. ej. Bodega central"
               />
             </Field>
-            <Field label="Tipo" hint="Sólo puede haber una bodega principal.">
-              <Select
-                value={location.kind}
-                onChange={(e) => setLocation({ ...location, kind: e.target.value as Kind })}
-              >
-                <option value="AREA">Área de operación</option>
-                <option value="PRINCIPAL">Bodega principal</option>
-              </Select>
-            </Field>
-            {location.id ? (
-              <Toggle
-                label="Activa"
-                value={location.active}
-                onChange={(active) => setLocation({ ...location, active })}
-              />
-            ) : null}
             <Button
               variant="accent"
               size="lg"
               className="w-full"
-              disabled={pending || !location.name.trim()}
+              disabled={pending || !name.trim()}
               onClick={saveL}
             >
               {pending ? "Guardando…" : "Guardar"}

@@ -28,8 +28,8 @@ beforeAll(async () => {
   categoriaId = categoria.id;
 
   const [a, b] = await Promise.all([
-    prisma.location.create({ data: { name: `Bodega A ${marca}`, kind: "AREA" } }),
-    prisma.location.create({ data: { name: `Bodega B ${marca}`, kind: "AREA" } }),
+    prisma.location.create({ data: { name: `Bodega A ${marca}`, kind: "PRINCIPAL" } }),
+    prisma.location.create({ data: { name: `Bodega B ${marca}`, kind: "PRINCIPAL" } }),
   ]);
   bodegaA = a.id;
   bodegaB = b.id;

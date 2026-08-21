@@ -16,8 +16,8 @@ export default async function NuevaCompraPage() {
       select: { id: true, name: true },
     }),
     prisma.location.findMany({
-      where: { active: true, kind: { in: ["PRINCIPAL", "AREA"] } },
-      orderBy: [{ kind: "asc" }, { sortOrder: "asc" }],
+      where: { active: true, kind: "PRINCIPAL" },
+      orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),
     prisma.product.findMany({

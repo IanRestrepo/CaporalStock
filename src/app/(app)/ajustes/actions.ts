@@ -112,14 +112,48 @@ export async function saveUser(input: unknown): Promise<Result> {
 }
 
 const locationSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1),
   name: z.string().trim().min(2, "El nombre es muy corto."),
-  kind: z.enum(["PRINCIPAL", "AREA", "MINIBAR"]),
-  active: z.boolean().default(true),
 });
 
-export async function saveLocation(input: unknown): Promise<Result> {
+/**
+ * Renombrar la bodega central. Es lo único que se puede hacer con ella:
+ * hay una sola, y no se crea ni se borra desde la interfaz — el inventario
+ * del hotel tiene que vivir en algún lado.
+ */
+export async function renameLocation(input: unknown): Promise<Result> {
   const parsed = locationSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos incompletos." };
+  }
+
+  const { user, error } = await actor("ADMIN");
+  if (!user) return { ok: false, error };
+
+  const { id, name } = parsed.data;
+
+  try {
+    await prisma.location.update({ where: { id, kind: "PRINCIPAL" }, data: { name } });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "No se pudo guardar la bodega." };
+  }
+}
+
+const categorySchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(2, "El nombre es muy corto."),
+  color: z.string().trim().min(1),
+  icon: z.string().trim().min(1),
+});
+
+/**
+ * Las categorías son la navegación de la bodega, no una etiqueta decorativa:
+ * cada una es el atajo con el que se encuentra el producto.
+ */
+export async function saveCategory(input: unknown): Promise<Result> {
+  const parsed = categorySchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos incompletos." };
   }
@@ -129,26 +163,38 @@ export async function saveLocation(input: unknown): Promise<Result> {
 
   const { id, ...data } = parsed.data;
 
-  if (data.kind === "PRINCIPAL") {
-    const existing = await prisma.location.findFirst({
-      where: { kind: "PRINCIPAL", active: true, ...(id ? { NOT: { id } } : {}) },
-      select: { name: true },
-    });
-    if (existing) {
-      return {
-        ok: false,
-        error: `Ya existe una bodega principal (${existing.name}). Sólo puede haber una.`,
-      };
-    }
-  }
-
   try {
-    if (id) await prisma.location.update({ where: { id }, data });
-    else await prisma.location.create({ data });
+    if (id) {
+      await prisma.category.update({ where: { id }, data });
+    } else {
+      const count = await prisma.category.count();
+      await prisma.category.create({ data: { ...data, sortOrder: count + 1 } });
+    }
     revalidatePath("/", "layout");
     return { ok: true };
   } catch {
-    return { ok: false, error: "No se pudo guardar la bodega." };
+    return { ok: false, error: "Ya existe una categoría con ese nombre." };
+  }
+}
+
+export async function deleteCategory(id: string): Promise<Result> {
+  const { user, error } = await actor("ADMIN");
+  if (!user) return { ok: false, error };
+
+  const products = await prisma.product.count({ where: { categoryId: id } });
+  if (products > 0) {
+    return {
+      ok: false,
+      error: `Todavía hay ${products} producto${products === 1 ? "" : "s"} en esta categoría. Movelos primero.`,
+    };
+  }
+
+  try {
+    await prisma.category.delete({ where: { id } });
+    revalidatePath("/", "layout");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "No se pudo borrar la categoría." };
   }
 }
 

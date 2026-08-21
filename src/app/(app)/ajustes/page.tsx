@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ClipboardList,
   MapPin,
+  Shapes,
   Palette,
   Users,
 } from "lucide-react";
@@ -27,8 +28,14 @@ export default async function AjustesPage() {
   const adminLinks = [
     { href: "/ajustes/equipo", label: "Equipo", hint: "Usuarios, roles y PIN", icon: Users },
     {
+      href: "/ajustes/categorias",
+      label: "Categorías",
+      hint: "Con qué se ordena la bodega",
+      icon: Shapes,
+    },
+    {
       href: "/ajustes/lugares",
-      label: "Bodegas y habitaciones",
+      label: "Bodega y habitaciones",
       hint: "Dónde se guarda el inventario",
       icon: MapPin,
     },

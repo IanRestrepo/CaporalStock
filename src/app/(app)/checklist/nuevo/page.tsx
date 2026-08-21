@@ -39,8 +39,8 @@ export default async function NuevaRevisionPage({ searchParams }: PageProps<"/ch
       },
     }),
     prisma.location.findMany({
-      where: { active: true, kind: { in: ["PRINCIPAL", "AREA"] } },
-      orderBy: [{ kind: "asc" }, { sortOrder: "asc" }],
+      where: { active: true, kind: "PRINCIPAL" },
+      orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),
   ]);

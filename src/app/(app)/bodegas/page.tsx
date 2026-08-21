@@ -1,127 +1,147 @@
 import Link from "next/link";
-import { ChevronRight, Plus, Refrigerator, Warehouse, Wrench } from "lucide-react";
-import { Card, SectionLabel } from "@/components/ui/card";
+import { ArrowLeftRight, PackageMinus, Warehouse } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Empty } from "@/components/ui/empty";
 import { PageHeader, Screen } from "@/components/screen";
-import { Button } from "@/components/ui/button";
-import { formatMoneyCompact } from "@/lib/format";
+import { StatRow } from "@/components/stat-row";
+import {
+  WarehouseExplorer,
+  type CategoryRow,
+  type WarehouseItem,
+} from "@/components/warehouse-explorer";
+import { formatMoneyCompact, num } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
-import type { LocationKind } from "@/generated/prisma/enums";
 
-export const metadata = { title: "Bodegas" };
+export const metadata = { title: "Bodega" };
 
-const KIND_ICON = {
-  PRINCIPAL: Warehouse,
-  AREA: Wrench,
-  MINIBAR: Refrigerator,
-} as const;
-
-const KIND_TITLE: Record<LocationKind, string> = {
-  PRINCIPAL: "Bodega central",
-  AREA: "Áreas de operación",
-  MINIBAR: "Minibares",
-};
-
-export default async function BodegasPage() {
+export default async function BodegaPage() {
   const user = await requireUser();
 
-  const rows = await prisma.$queryRaw<
-    { id: string; name: string; kind: LocationKind; room: string | null; value: string; skus: bigint; low: bigint }[]
-  >`
-    SELECT l.id,
-           l.name,
-           l.kind::text AS kind,
-           r.number     AS room,
-           COALESCE(SUM(s.quantity * p."costPrice"), 0)::text AS value,
-           COUNT(*) FILTER (WHERE s.quantity > 0)             AS skus,
-           COUNT(*) FILTER (
-             WHERE COALESCE(NULLIF(s."minQty", 0), p."minQty") > 0
-               AND s.quantity < COALESCE(NULLIF(s."minQty", 0), p."minQty")
-           ) AS low
-      FROM "Location" l
-      LEFT JOIN "Room"    r ON r.id = l."roomId"
-      LEFT JOIN "Stock"   s ON s."locationId" = l.id
-      LEFT JOIN "Product" p ON p.id = s."productId" AND p.active
-     WHERE l.active
-     GROUP BY l.id, l.name, l.kind, r.number
-     ORDER BY l.kind, l."sortOrder", l.name
-  `;
+  /**
+   * El hotel tiene una sola bodega. Los minibares también guardan producto,
+   * pero se manejan desde la suite a la que pertenecen, no desde acá.
+   */
+  const central = await prisma.location.findFirst({
+    where: { kind: "PRINCIPAL", active: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true },
+  });
 
-  const groups: LocationKind[] = ["PRINCIPAL", "AREA", "MINIBAR"];
+  if (!central) {
+    return (
+      <Screen>
+        <PageHeader title="Bodega" />
+        <Card>
+          <Empty
+            icon={Warehouse}
+            title="No hay bodega central"
+            body="Creala desde Ajustes › Bodega y habitaciones para poder guardar inventario."
+          />
+        </Card>
+      </Screen>
+    );
+  }
+
+  const [categories, products] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, color: true, icon: true },
+    }),
+    prisma.product.findMany({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        baseUnit: true,
+        minQty: true,
+        costPrice: true,
+        salePrice: true,
+        perishable: true,
+        categoryId: true,
+        category: { select: { name: true, color: true } },
+        stock: {
+          where: { locationId: central.id },
+          select: { quantity: true, minQty: true },
+        },
+      },
+    }),
+  ]);
+
+  const items: WarehouseItem[] = products.map((product) => {
+    const row = product.stock[0];
+    return {
+      productId: product.id,
+      name: product.name,
+      categoryId: product.categoryId,
+      category: product.category.name,
+      color: product.category.color,
+      baseUnit: product.baseUnit,
+      quantity: row ? num(row.quantity) : 0,
+      threshold: (row ? num(row.minQty) : 0) || num(product.minQty),
+      draft: {
+        id: product.id,
+        name: product.name,
+        categoryId: product.categoryId,
+        baseUnit: product.baseUnit,
+        costPrice: num(product.costPrice),
+        salePrice: num(product.salePrice),
+        minQty: num(product.minQty),
+        perishable: product.perishable,
+        active: true,
+      },
+    };
+  });
+
+  const value = products.reduce(
+    (sum, product) => sum + (product.stock[0] ? num(product.stock[0].quantity) : 0) * num(product.costPrice),
+    0,
+  );
+  const withStock = items.filter((i) => i.quantity > 0).length;
+  const low = items.filter((i) => i.threshold > 0 && i.quantity < i.threshold).length;
 
   return (
     <Screen>
       <PageHeader
-        title="Bodegas"
-        subtitle="Todo lugar que guarda producto es una bodega."
-        action={
-          user.role === "ADMIN" ? (
-            <Button asChild variant="quiet" size="icon" aria-label="Crear bodega">
-              <Link href="/bodegas/nueva">
-                <Plus className="size-5" />
-              </Link>
-            </Button>
-          ) : null
-        }
+        title={central.name}
+        subtitle="Todo el inventario del hotel, ordenado por categoría."
       />
 
-      <div className="space-y-7">
-        {groups.map((kind) => {
-          const items = rows.filter((r) => r.kind === kind);
-          if (!items.length) return null;
-          const Icon = KIND_ICON[kind];
+      <Card className="mb-4 px-5 py-4">
+        <StatRow
+          items={[
+            { label: "Con existencia", value: withStock, hint: `de ${items.length}` },
+            { label: "Bajo mínimo", value: low, hint: low === 0 ? "todo en orden" : undefined },
+            user.role === "ADMIN"
+              ? { label: "Valor a costo", value: formatMoneyCompact(value) }
+              : { label: "Categorías", value: categories.length },
+          ]}
+        />
+      </Card>
 
-          return (
-            <section key={kind}>
-              <SectionLabel className="mb-2.5">{KIND_TITLE[kind]}</SectionLabel>
-              <div className={kind === "MINIBAR" ? "grid grid-cols-2 gap-2 sm:grid-cols-3" : "space-y-2"}>
-                {items.map((row) =>
-                  kind === "MINIBAR" ? (
-                    <Link
-                      key={row.id}
-                      href={`/bodegas/${row.id}`}
-                      className="press rounded-[18px] bg-surface p-3.5 hover:bg-raised"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <Icon className="size-4 text-faint" strokeWidth={1.75} />
-                        {Number(row.low) > 0 ? (
-                          <span className="size-1.5 rounded-full bg-warn" />
-                        ) : null}
-                      </div>
-                      <p className="text-[0.9375rem] font-semibold">Suite {row.room}</p>
-                      <p className="mt-0.5 text-[0.8125rem] text-faint tnum">
-                        {Number(row.skus)} productos
-                      </p>
-                    </Link>
-                  ) : (
-                    <Card key={row.id} className="p-0">
-                      <Link
-                        href={`/bodegas/${row.id}`}
-                        className="press flex items-center gap-3.5 px-4 py-3.5"
-                      >
-                        <span className="grid size-10 shrink-0 place-items-center rounded-[13px] bg-raised text-soft">
-                          <Icon className="size-[18px]" strokeWidth={1.75} />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[0.9375rem] font-medium">
-                            {row.name}
-                          </span>
-                          <span className="mt-0.5 block text-[0.8125rem] text-faint tnum">
-                            {Number(row.skus)} productos
-                            {user.role === "ADMIN" ? ` · ${formatMoneyCompact(Number(row.value))}` : ""}
-                            {Number(row.low) > 0 ? ` · ${Number(row.low)} bajo mínimo` : ""}
-                          </span>
-                        </span>
-                        <ChevronRight className="size-4.5 shrink-0 text-faint" />
-                      </Link>
-                    </Card>
-                  ),
-                )}
-              </div>
-            </section>
-          );
-        })}
+      <div className="mb-6 grid grid-cols-2 gap-2.5">
+        <Link
+          href={`/movimientos/nuevo?tipo=CONSUMO&desde=${central.id}`}
+          className="press flex items-center gap-2.5 rounded-[16px] bg-surface px-4 py-3.5 text-[0.9375rem] font-medium hover:bg-raised"
+        >
+          <PackageMinus className="size-[18px] text-faint" strokeWidth={1.75} />
+          Sacar
+        </Link>
+        <Link
+          href={`/movimientos/nuevo?tipo=TRASLADO&desde=${central.id}`}
+          className="press flex items-center gap-2.5 rounded-[16px] bg-surface px-4 py-3.5 text-[0.9375rem] font-medium hover:bg-raised"
+        >
+          <ArrowLeftRight className="size-[18px] text-faint" strokeWidth={1.75} />
+          Trasladar
+        </Link>
       </div>
+
+      <WarehouseExplorer
+        items={items}
+        categories={categories as CategoryRow[]}
+        canEdit={user.role === "ADMIN"}
+      />
     </Screen>
   );
 }

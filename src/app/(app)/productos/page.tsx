@@ -40,7 +40,7 @@ export default async function ProductosPage() {
     <Screen>
       <PageHeader
         title="Productos"
-        subtitle="Existencias sumadas de todas las bodegas."
+        subtitle="Catálogo completo: bodega central más minibares."
         action={
           user.role === "ADMIN" ? (
             <Button asChild variant="quiet" size="icon" aria-label="Nuevo producto">

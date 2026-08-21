@@ -90,17 +90,3 @@ function decimal(n: number, max: number) {
 export function presentationHint(factor: number, unit: BaseUnit): string {
   return `${formatQty(factor, unit)} c/u`;
 }
-
-/**
- * Cuántas porciones completas alcanzo con lo disponible.
- * El corazón del módulo de cocina: receta -> porciones reales.
- */
-export function portionsAvailable(
-  available: number,
-  perFullYield: number,
-  yieldPortions: number,
-): number {
-  if (perFullYield <= 0 || yieldPortions <= 0) return Infinity;
-  const perPortion = perFullYield / yieldPortions;
-  return Math.floor(available / perPortion);
-}

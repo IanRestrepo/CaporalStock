@@ -107,7 +107,7 @@ export default async function InicioPage() {
           href="/movimientos/nuevo?tipo=TRASLADO"
           icon={Warehouse}
           title="Trasladar"
-          body="Entre bodegas"
+          body="Bodega a minibar"
         />
         <Action href="/suites" icon={Refrigerator} title="Reponer minibar" body="Nivel par" />
         <Action href="/checklist" icon={ClipboardCheck} title="Revisar suite" body="Checklist" />
