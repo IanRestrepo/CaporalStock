@@ -1,13 +1,19 @@
 "use client";
 
 import { LevelRow } from "@/components/level-row";
+import { ProductForm, type ProductDraft } from "@/components/product-form";
+import { Button } from "@/components/ui/button";
 import { Empty } from "@/components/ui/empty";
 import { Input } from "@/components/ui/field";
+import { Sheet } from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/toast";
+import { deleteProduct } from "@/app/(app)/productos/actions";
 import { cn } from "@/lib/cn";
 import { categoryColor } from "@/lib/appearance";
 import type { BaseUnit } from "@/generated/prisma/enums";
-import { PackageSearch, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { PackageSearch, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 
 export type StockItem = {
   productId: string;
@@ -18,6 +24,14 @@ export type StockItem = {
   quantity: number;
   threshold: number;
   par: number | null;
+  /** Sólo se manda cuando la lista deja editar: es lo que llena la hoja. */
+  draft?: ProductDraft;
+};
+
+/** Lo que hace falta para crear o corregir un producto sin salir de la lista. */
+export type StockAdmin = {
+  categories: { id: string; name: string }[];
+  defaultCategoryId?: string;
 };
 
 /**
@@ -28,13 +42,20 @@ export function StockExplorer({
   items,
   hrefBase,
   emptyBody,
+  admin,
 }: {
   items: StockItem[];
   hrefBase?: string;
   emptyBody?: string;
+  admin?: StockAdmin;
 }) {
+  const router = useRouter();
+  const toast = useToast();
+  const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ProductDraft | null>(null);
+  const [removing, setRemoving] = useState<StockItem | null>(null);
 
   const categories = useMemo(() => {
     const seen = new Map<string, string>();
@@ -54,6 +75,38 @@ export function StockExplorer({
         return a.name.localeCompare(b.name, "es");
       });
   }, [items, query, category]);
+
+  const blank: ProductDraft | null = admin
+    ? {
+        name: "",
+        categoryId: admin.defaultCategoryId ?? admin.categories[0]?.id ?? "",
+        baseUnit: "UNIDAD",
+        costPrice: 0,
+        salePrice: 0,
+        minQty: 0,
+        perishable: false,
+        active: true,
+      }
+    : null;
+
+  const confirmRemove = () => {
+    if (!removing) return;
+    startTransition(async () => {
+      const result = await deleteProduct(removing.productId);
+      if (!result.ok) {
+        toast.push("error", result.error);
+        return;
+      }
+      toast.push(
+        "ok",
+        result.archived
+          ? `${removing.name} se archivó: ya tenía historial o saldo.`
+          : `${removing.name} se borró.`,
+      );
+      setRemoving(null);
+      router.refresh();
+    });
+  };
 
   return (
     <div>
@@ -87,14 +140,23 @@ export function StockExplorer({
         </div>
       ) : null}
 
+      {admin && filtered.length ? (
+        <div className="mb-2.5 flex justify-end">
+          <Button size="sm" variant="quiet" onClick={() => setEditing(blank)}>
+            <Plus className="size-4" />
+            Producto
+          </Button>
+        </div>
+      ) : null}
+
       {filtered.length ? (
         <div className="space-y-1.5">
           {filtered.map((item) => {
             const target = item.par ?? (item.threshold > 0 ? item.threshold : null);
             const low = item.threshold > 0 && item.quantity < item.threshold;
-            return (
+            const row = (
               <LevelRow
-                key={item.productId}
+                className={admin ? "min-w-0 flex-1" : undefined}
                 name={item.name}
                 color={categoryColor(item.color)}
                 quantity={item.quantity}
@@ -104,6 +166,25 @@ export function StockExplorer({
                 tone={item.quantity === 0 ? "danger" : low ? "warn" : undefined}
               />
             );
+
+            if (!admin) return <div key={item.productId}>{row}</div>;
+
+            return (
+              <div key={item.productId} className="flex items-center gap-1.5">
+                {row}
+                <div className="flex shrink-0 gap-1">
+                  <IconButton
+                    label={`Editar ${item.name}`}
+                    onClick={() => item.draft && setEditing(item.draft)}
+                  >
+                    <Pencil className="size-4" />
+                  </IconButton>
+                  <IconButton label={`Borrar ${item.name}`} danger onClick={() => setRemoving(item)}>
+                    <Trash2 className="size-4" />
+                  </IconButton>
+                </div>
+              </div>
+            );
           })}
         </div>
       ) : (
@@ -111,9 +192,91 @@ export function StockExplorer({
           icon={PackageSearch}
           title={query ? "Nada coincide" : "Sin existencias"}
           body={query ? `No hay productos que digan “${query}” acá.` : emptyBody}
+          action={
+            admin && !query ? (
+              <Button variant="accent" onClick={() => setEditing(blank)}>
+                <Plus className="size-4" />
+                Nuevo producto
+              </Button>
+            ) : null
+          }
         />
       )}
+
+      {admin ? (
+        <>
+          <Sheet
+            open={editing !== null}
+            onClose={() => setEditing(null)}
+            title={editing?.id ? "Editar producto" : "Nuevo producto"}
+            description={
+              editing?.id ? undefined : "Elegí bien la unidad base: no se puede cambiar después."
+            }
+          >
+            {editing ? (
+              <ProductForm
+                draft={editing}
+                categories={admin.categories}
+                submitLabel={editing.id ? "Guardar cambios" : "Crear producto"}
+                onDone={() => setEditing(null)}
+              />
+            ) : null}
+          </Sheet>
+
+          <Sheet
+            open={removing !== null}
+            onClose={() => setRemoving(null)}
+            title="¿Borrar el producto?"
+            description={
+              removing
+                ? `${removing.name} desaparece de la bodega y de los formularios. Si ya tiene movimientos o saldo, se archiva en vez de borrarse para no romper el historial.`
+                : undefined
+            }
+          >
+            <div className="flex gap-2.5">
+              <Button size="lg" className="flex-1" onClick={() => setRemoving(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                size="lg"
+                className="flex-1"
+                disabled={pending}
+                onClick={confirmRemove}
+              >
+                {pending ? "Borrando…" : "Borrar"}
+              </Button>
+            </div>
+          </Sheet>
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function IconButton({
+  children,
+  label,
+  danger,
+  onClick,
+}: {
+  children: React.ReactNode;
+  label: string;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        "press grid size-9 place-items-center rounded-[12px] bg-raised text-faint",
+        danger ? "hover:bg-danger-soft hover:text-danger" : "hover:bg-hover hover:text-ink",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
