@@ -25,7 +25,7 @@ export default async function NuevoProductoPage() {
       <PageHeader
         back={{ href: "/productos" }}
         title="Nuevo producto"
-        subtitle="Elegí bien la unidad base: no se puede cambiar después."
+        subtitle="Elegí bien la unidad de medida: no se puede cambiar después."
       />
       <div className="rounded-card bg-surface p-4">
         <NewProduct categories={categories} sections={sections} />

@@ -78,9 +78,12 @@ model Room {
 
 // ─────────────────────────────  Catálogo  ─────────────────────────────
 
+/// Unidad de medida del producto. Todo su inventario vive en esta unidad.
 enum BaseUnit {
   GRAMO
+  KILO
   MILILITRO
+  LITRO
   UNIDAD
 }
 

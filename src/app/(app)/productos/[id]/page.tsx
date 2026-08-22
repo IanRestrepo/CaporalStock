@@ -8,7 +8,7 @@ import { PageHeader, Screen } from "@/components/screen";
 import { StatRow } from "@/components/stat-row";
 import { categoryColor } from "@/lib/appearance";
 import { daysUntil, formatDate, formatMoney, formatPercent, num } from "@/lib/format";
-import { formatQty, presentationHint } from "@/lib/units";
+import { formatQty, presentationHint, UNITS } from "@/lib/units";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { ProductAdmin } from "./product-admin";
@@ -131,7 +131,7 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
               ? [
                   { label: "Existencias", value: formatQty(total, product.baseUnit) },
                   {
-                    label: "Costo por " + unitWord(product.baseUnit),
+                    label: `Precio costo · ${UNITS[product.baseUnit].label}`,
                     value: formatMoney(cost, cost < 100),
                   },
                   {
@@ -205,7 +205,7 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
 
       {product.lots.length ? (
         <>
-          <SectionLabel className="mb-2.5">Lotes y vencimiento</SectionLabel>
+          <SectionLabel className="mb-2.5">Vencimientos</SectionLabel>
           <Card className="mb-6 overflow-hidden">
             <RowList>
               {product.lots.map((lot) => {
@@ -247,6 +247,4 @@ export default async function ProductoPage({ params }: PageProps<"/productos/[id
   );
 }
 
-function unitWord(unit: "GRAMO" | "MILILITRO" | "UNIDAD") {
-  return unit === "GRAMO" ? "gramo" : unit === "MILILITRO" ? "ml" : "unidad";
-}
+

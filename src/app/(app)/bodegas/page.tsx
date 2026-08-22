@@ -111,7 +111,7 @@ export default async function BodegasPage() {
 
         {sections.length ? (
           <section>
-            <SectionLabel className="mb-2.5">Secciones</SectionLabel>
+            <SectionLabel className="mb-2.5">Secciones o categorías</SectionLabel>
             <div className="space-y-2">
               {sections.map((row) => {
                 const Icon = categoryIcon(row.icon);

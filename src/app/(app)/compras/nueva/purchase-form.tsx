@@ -6,19 +6,23 @@ import { Sheet } from "@/components/ui/sheet";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { formatMoney } from "@/lib/format";
-import { formatQty, parseNumber, toBase } from "@/lib/units";
+import { formatQty, parseNumber, toBase, UNITS } from "@/lib/units";
 import type { BaseUnit } from "@/generated/prisma/enums";
 import { FileUp, Paperclip, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
 import { createPurchase } from "../actions";
+import { BLANK_SUPPLIER, SupplierSheet } from "./supplier-sheet";
 
 type Presentation = { id: string; name: string; factor: number };
+type Taxonomy = { id: string; name: string };
 type Product = {
   id: string;
   name: string;
   baseUnit: BaseUnit;
   perishable: boolean;
+  sectionId: string | null;
+  categoryId: string;
   presentations: Presentation[];
 };
 
@@ -29,17 +33,24 @@ type Line = {
   qty: string;
   lineTotal: string;
   expiresAt: string;
+  /** A dónde va lo que trae este renglón. Arranca en lo que ya dice el producto. */
+  sectionId: string;
+  categoryId: string;
 };
 
 export function PurchaseForm({
   suppliers,
   locations,
   products,
+  sections,
+  categories,
   defaultLocationId,
 }: {
   suppliers: { id: string; name: string }[];
   locations: { id: string; name: string }[];
   products: Product[];
+  sections: Taxonomy[];
+  categories: Taxonomy[];
   defaultLocationId: string;
 }) {
   const router = useRouter();
@@ -55,6 +66,7 @@ export function PurchaseForm({
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<Line[]>([]);
   const [picker, setPicker] = useState(false);
+  const [newSupplier, setNewSupplier] = useState(false);
   const [attachment, setAttachment] = useState<File | null>(null);
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -75,6 +87,8 @@ export function PurchaseForm({
         qty: "",
         lineTotal: "",
         expiresAt: "",
+        sectionId: product.sectionId ?? "",
+        categoryId: product.categoryId,
       },
     ]);
     setPicker(false);
@@ -102,6 +116,8 @@ export function PurchaseForm({
           factor: presentation?.factor ?? 1,
           lineTotal: parseNumber(line.lineTotal) ?? 0,
           expiresAt: line.expiresAt || null,
+          sectionId: line.sectionId || null,
+          categoryId: line.categoryId || null,
         };
       }),
     };
@@ -128,18 +144,29 @@ export function PurchaseForm({
     <div className="space-y-5">
       <div className="space-y-3 rounded-card bg-surface p-4">
         <Field label="Proveedor" htmlFor="proveedor">
-          <Select
-            id="proveedor"
-            value={supplierId}
-            onChange={(e) => setSupplierId(e.target.value)}
-          >
-            <option value="">Elegí uno</option>
-            {suppliers.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+          <div className="flex gap-2">
+            <Select
+              id="proveedor"
+              value={supplierId}
+              onChange={(e) => setSupplierId(e.target.value)}
+              className="min-w-0 flex-1"
+            >
+              <option value="">Elegí uno</option>
+              {suppliers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+            <Button
+              variant="quiet"
+              size="icon"
+              aria-label="Crear proveedor nuevo"
+              onClick={() => setNewSupplier(true)}
+            >
+              <Plus className="size-5" />
+            </Button>
+          </div>
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
@@ -246,9 +273,34 @@ export function PurchaseForm({
                         value={line.expiresAt}
                         onChange={(e) => patch(line.key, { expiresAt: e.target.value })}
                         className="col-span-2 h-11 text-[0.875rem]"
-                        aria-label="Vence"
+                        aria-label="Fecha de vencimiento"
                       />
                     ) : null}
+                    <Select
+                      value={line.sectionId}
+                      onChange={(e) => patch(line.key, { sectionId: e.target.value })}
+                      className="h-11 text-[0.875rem]"
+                      aria-label={`Categoría de ${product.name}`}
+                    >
+                      <option value="">Sin categoría</option>
+                      {sections.map((sec) => (
+                        <option key={sec.id} value={sec.id}>
+                          {sec.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Select
+                      value={line.categoryId}
+                      onChange={(e) => patch(line.key, { categoryId: e.target.value })}
+                      className="h-11 text-[0.875rem]"
+                      aria-label={`Subcategoría de ${product.name}`}
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </Select>
                   </div>
 
                   {base > 0 ? (
@@ -258,7 +310,7 @@ export function PurchaseForm({
                         {formatQty(base, product.baseUnit, { exact: true })}
                       </span>
                       {lineTotal > 0
-                        ? ` · ${formatMoney(lineTotal / base, true)} por ${unitWord(product.baseUnit)}`
+                        ? ` · ${formatMoney(lineTotal / base, true)} por ${UNITS[product.baseUnit].label}`
                         : ""}
                     </p>
                   ) : null}
@@ -360,12 +412,20 @@ export function PurchaseForm({
       </div>
 
       <p className="px-1 text-center text-[0.8125rem] text-faint">
-        Al dar entrada, el costo promedio de cada producto se recalcula con esta factura.
+        Al dar entrada, el costo promedio de cada producto se recalcula con esta factura. Lo que
+        elijas en cada renglón queda como la clasificación del producto.
       </p>
 
       <Sheet open={picker} onClose={() => setPicker(false)} title="¿Qué trae la factura?" size="lg">
         <ProductList products={products} onPick={addLine} />
       </Sheet>
+
+      <SupplierSheet
+        open={newSupplier}
+        onClose={() => setNewSupplier(false)}
+        draft={BLANK_SUPPLIER}
+        onSaved={(id) => setSupplierId(id)}
+      />
     </div>
   );
 }
@@ -411,6 +471,3 @@ function ProductList({
   );
 }
 
-function unitWord(unit: BaseUnit) {
-  return unit === "GRAMO" ? "g" : unit === "MILILITRO" ? "ml" : "unidad";
-}

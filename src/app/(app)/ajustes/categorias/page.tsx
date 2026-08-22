@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/session";
 import { CategoriesAdmin, type CategoryAdminRow } from "./categories-admin";
 
-export const metadata = { title: "Categorías" };
+export const metadata = { title: "Subcategorías" };
 
 export default async function CategoriasPage() {
   await requireAdminPage();
@@ -31,8 +31,8 @@ export default async function CategoriasPage() {
     <Screen>
       <PageHeader
         back={{ href: "/ajustes" }}
-        title="Categorías"
-        subtitle="Con qué se ordena la bodega por dentro."
+        title="Subcategorías"
+        subtitle="Qué es el producto, por dentro de cada categoría."
       />
       <CategoriesAdmin categories={rows} />
     </Screen>

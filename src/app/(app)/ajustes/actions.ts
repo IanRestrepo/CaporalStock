@@ -173,7 +173,7 @@ export async function saveSection(input: unknown): Promise<Result> {
     revalidatePath("/", "layout");
     return { ok: true };
   } catch {
-    return { ok: false, error: "Ya existe una sección con ese nombre." };
+    return { ok: false, error: "Ya existe una categoría con ese nombre." };
   }
 }
 
@@ -185,7 +185,7 @@ export async function deleteSection(id: string): Promise<Result> {
   if (products > 0) {
     return {
       ok: false,
-      error: `Todavía hay ${products} producto${products === 1 ? "" : "s"} en esta sección. Movelos primero.`,
+      error: `Todavía hay ${products} producto${products === 1 ? "" : "s"} en esta categoría. Movelos primero.`,
     };
   }
 
@@ -194,7 +194,7 @@ export async function deleteSection(id: string): Promise<Result> {
     revalidatePath("/", "layout");
     return { ok: true };
   } catch {
-    return { ok: false, error: "No se pudo borrar la sección." };
+    return { ok: false, error: "No se pudo borrar la subcategoría." };
   }
 }
 
@@ -230,7 +230,7 @@ export async function saveCategory(input: unknown): Promise<Result> {
     revalidatePath("/", "layout");
     return { ok: true };
   } catch {
-    return { ok: false, error: "Ya existe una categoría con ese nombre." };
+    return { ok: false, error: "Ya existe una subcategoría con ese nombre." };
   }
 }
 
@@ -242,7 +242,7 @@ export async function deleteCategory(id: string): Promise<Result> {
   if (products > 0) {
     return {
       ok: false,
-      error: `Todavía hay ${products} producto${products === 1 ? "" : "s"} en esta categoría. Movelos primero.`,
+      error: `Todavía hay ${products} producto${products === 1 ? "" : "s"} en esta subcategoría. Movelos primero.`,
     };
   }
 
@@ -251,7 +251,7 @@ export async function deleteCategory(id: string): Promise<Result> {
     revalidatePath("/", "layout");
     return { ok: true };
   } catch {
-    return { ok: false, error: "No se pudo borrar la categoría." };
+    return { ok: false, error: "No se pudo borrar la subcategoría." };
   }
 }
 

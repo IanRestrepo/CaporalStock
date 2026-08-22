@@ -213,7 +213,7 @@ export function StockExplorer({
             onClose={() => setEditing(null)}
             title={editing?.id ? "Editar producto" : "Nuevo producto"}
             description={
-              editing?.id ? undefined : "Elegí bien la unidad base: no se puede cambiar después."
+              editing?.id ? undefined : "Elegí bien la unidad de medida: no se puede cambiar después."
             }
           >
             {editing ? (

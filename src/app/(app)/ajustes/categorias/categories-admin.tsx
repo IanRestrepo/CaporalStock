@@ -45,7 +45,7 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
     <div>
       <div className="mb-2.5 flex items-center justify-between px-1">
         <p className="text-2xs font-medium tracking-[0.12em] text-faint uppercase">
-          Categorías · {categories.length}
+          Subcategorías · {categories.length}
         </p>
         <Button size="sm" variant="quiet" onClick={() => setDraft(BLANK_TAXONOMY)}>
           <Plus className="size-4" />
@@ -91,20 +91,20 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
         })}
         {categories.length === 0 ? (
           <p className="px-5 py-4 text-[0.8125rem] text-faint">
-            Sin categorías. Creá al menos una para poder cargar productos.
+            Sin subcategorías. Creá al menos una para poder cargar productos.
           </p>
         ) : null}
       </div>
 
       <p className="mt-2.5 px-1 text-[0.8125rem] text-faint">
-        La categoría dice QUÉ es el producto y le da el color con el que se reconoce en una lista.
-        Dónde se usa lo dice la sección, que es otra cosa.
+        La subcategoría dice QUÉ es el producto y le da el color con el que se reconoce en una
+        lista. Dónde se usa lo dice la categoría, que es otra cosa.
       </p>
 
       <Sheet
         open={draft !== null}
         onClose={() => setDraft(null)}
-        title={draft?.id ? "Editar categoría" : "Nueva categoría"}
+        title={draft?.id ? "Editar subcategoría" : "Nueva subcategoría"}
       >
         {draft ? (
           <TaxonomyForm
@@ -126,7 +126,7 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
                 }}
               >
                 <Trash2 className="size-4" />
-                Borrar categoría
+                Borrar subcategoría
               </Button>
             ) : null}
           </TaxonomyForm>
@@ -136,7 +136,7 @@ export function CategoriesAdmin({ categories }: { categories: CategoryAdminRow[]
       <Sheet
         open={removing !== null}
         onClose={() => setRemoving(null)}
-        title="¿Borrar la categoría?"
+        title="¿Borrar la subcategoría?"
         description={
           removing
             ? `${removing.name} desaparece de la bodega. Sólo se puede borrar si no le queda ningún producto.`

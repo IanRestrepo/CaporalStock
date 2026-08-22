@@ -8,7 +8,7 @@ import { actor } from "@/lib/session";
 const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "El nombre es muy corto."),
-  categoryId: z.string().min(1, "Elegí una categoría."),
+  categoryId: z.string().min(1, "Elegí una subcategoría."),
   sectionId: z
     .string()
     .nullable()

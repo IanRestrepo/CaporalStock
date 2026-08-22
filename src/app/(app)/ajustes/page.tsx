@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   MapPin,
   Shapes,
+  Truck,
   Palette,
   Users,
 } from "lucide-react";
@@ -30,13 +31,13 @@ export default async function AjustesPage() {
     { href: "/ajustes/equipo", label: "Equipo", hint: "Usuarios, roles y PIN", icon: Users },
     {
       href: "/ajustes/secciones",
-      label: "Secciones",
+      label: "Categorías",
       hint: "Dónde se usa: lavandería, cocina…",
       icon: LayoutGrid,
     },
     {
       href: "/ajustes/categorias",
-      label: "Categorías",
+      label: "Subcategorías",
       hint: "Qué es: bebida, snack, amenity…",
       icon: Shapes,
     },
@@ -45,6 +46,12 @@ export default async function AjustesPage() {
       label: "Bodega y habitaciones",
       hint: "Dónde se guarda el inventario",
       icon: MapPin,
+    },
+    {
+      href: "/ajustes/proveedores",
+      label: "Proveedores",
+      hint: "A quién le compra el hotel",
+      icon: Truck,
     },
     {
       href: "/ajustes/checklist",

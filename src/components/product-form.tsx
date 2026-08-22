@@ -81,7 +81,7 @@ export function ProductForm({
       </Field>
 
       <Field
-        label="Sección"
+        label="Categoría"
         htmlFor="seccion"
         hint="Dónde se usa. Es la lista que se ve en Bodega."
       >
@@ -99,7 +99,7 @@ export function ProductForm({
         </Select>
       </Field>
 
-      <Field label="Categoría" htmlFor="categoria" hint="Qué es. Le da el color en las listas.">
+      <Field label="Subcategoría" htmlFor="categoria" hint="Qué es. Le da el color en las listas.">
         <Select
           id="categoria"
           value={form.categoryId}
@@ -115,7 +115,7 @@ export function ProductForm({
       </Field>
 
       <Field
-        label="Unidad base"
+        label="Unidad de medida"
         htmlFor="unidad"
         hint={
           editing
@@ -139,9 +139,9 @@ export function ProductForm({
 
       <div className="grid grid-cols-2 gap-3">
         <Field
-          label={`Costo por ${unit.label}`}
+          label="Precio costo"
           htmlFor="costo"
-          hint={editing ? "Se recalcula solo con cada compra." : undefined}
+          hint={editing ? `Por ${unit.label}. Se recalcula solo con cada compra.` : `Por ${unit.label}.`}
         >
           <Input
             id="costo"
@@ -152,7 +152,7 @@ export function ProductForm({
           />
         </Field>
 
-        <Field label={`Venta por ${unit.label}`} htmlFor="venta" hint="0 si no se vende.">
+        <Field label="Precio de venta" htmlFor="venta" hint={`Por ${unit.label}. 0 si no se vende.`}>
           <Input
             id="venta"
             inputMode="decimal"
@@ -174,7 +174,7 @@ export function ProductForm({
       ) : null}
 
       <Field
-        label="Stock mínimo"
+        label="Stock mínimo de inventario"
         htmlFor="minimo"
         hint={`En ${unit.plural}. Por debajo de esto, el sistema avisa.`}
       >
@@ -188,8 +188,8 @@ export function ProductForm({
       </Field>
 
       <Toggle
-        label="Es perecedero"
-        hint="Se le controla fecha de vencimiento por lote."
+        label="Controlar fecha de vencimiento"
+        hint="Se le pide la fecha al comprarlo y avisa cuando esté por vencer."
         value={form.perishable}
         onChange={(perishable) => setForm({ ...form, perishable })}
       />
@@ -242,7 +242,7 @@ export function Toggle({
       <span
         className={cn(
           "relative h-6 w-10 shrink-0 rounded-full transition-colors",
-          value ? "bg-accent" : "bg-line-strong",
+          value ? "bg-ok" : "bg-line-strong",
         )}
       >
         <span

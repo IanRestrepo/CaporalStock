@@ -120,7 +120,7 @@ export default async function BodegaPage({ params }: PageProps<"/bodegas/[id]">)
         admin={isAdmin && isCentral ? { categories, sections } : undefined}
         emptyBody={
           isCentral
-            ? "La bodega arranca vacía. Creá el primer producto y decile en qué sección se usa."
+            ? "La bodega arranca vacía. Creá el primer producto y decile en qué categoría se usa."
             : "Este minibar todavía no tiene nada. Trasladá productos desde la bodega central."
         }
       />

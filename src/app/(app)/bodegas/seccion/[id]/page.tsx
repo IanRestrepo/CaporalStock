@@ -69,7 +69,7 @@ export default async function SeccionPage({ params }: PageProps<"/bodegas/seccio
         items={items}
         hrefBase="/productos"
         admin={isAdmin ? { categories, sections, defaultSectionId: section.id } : undefined}
-        emptyBody={`Todavía no hay nada en ${section.name}. Creá un producto y asignalo a esta sección.`}
+        emptyBody={`Todavía no hay nada en ${section.name}. Creá un producto y asignalo a esta categoría.`}
       />
     </Screen>
   );

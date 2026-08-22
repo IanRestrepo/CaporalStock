@@ -1,9 +1,9 @@
 import type { BaseUnit } from "@/generated/prisma/enums";
 
 /**
- * Todo el inventario vive en la unidad base del producto.
+ * Todo el inventario vive en la unidad de medida del producto.
  * Las presentaciones ("Bolsa 500 g", "Caja x12") sólo son lentes de entrada:
- * se convierten a base al guardar y se deshacen al mostrar.
+ * se convierten a esa unidad al guardar y se deshacen al mostrar.
  */
 
 export const UNITS: Record<
@@ -11,11 +11,16 @@ export const UNITS: Record<
   { symbol: string; label: string; plural: string; step: number; decimals: number }
 > = {
   GRAMO: { symbol: "g", label: "gramo", plural: "gramos", step: 1, decimals: 0 },
+  KILO: { symbol: "kg", label: "kilo", plural: "kilos", step: 0.1, decimals: 2 },
   MILILITRO: { symbol: "ml", label: "mililitro", plural: "mililitros", step: 1, decimals: 0 },
+  LITRO: { symbol: "L", label: "litro", plural: "litros", step: 0.1, decimals: 2 },
   UNIDAD: { symbol: "u", label: "unidad", plural: "unidades", step: 1, decimals: 0 },
 };
 
-export const UNIT_OPTIONS = (Object.keys(UNITS) as BaseUnit[]).map((value) => ({
+/** El orden del desplegable: lo que más se usa arriba. */
+const UNIT_ORDER: BaseUnit[] = ["GRAMO", "UNIDAD", "LITRO", "KILO", "MILILITRO"];
+
+export const UNIT_OPTIONS = UNIT_ORDER.map((value) => ({
   value,
   label: `${UNITS[value].plural} (${UNITS[value].symbol})`,
 }));
@@ -57,7 +62,6 @@ type FormatOptions = {
 
 /**
  * 850 g · 1,25 kg · 700 ml · 2,4 L · 12 u
- * Escala automáticamente porque "25000 g" es ilegible de un vistazo.
  */
 export function formatQty(
   qtyBase: number,
@@ -66,13 +70,15 @@ export function formatQty(
 ): string {
   const abs = Math.abs(qtyBase);
 
+  // Gramos y mililitros escalan solos porque "25000 g" es ilegible de un vistazo.
+  // Kilos y litros ya vienen en la escala grande: no hay nada que escalar.
   if (!exact && unit === "GRAMO" && abs >= 1000) {
     return join(decimal(qtyBase / 1000, 2), "kg", bare);
   }
   if (!exact && unit === "MILILITRO" && abs >= 1000) {
     return join(decimal(qtyBase / 1000, 2), "L", bare);
   }
-  return join(decimal(qtyBase, unit === "UNIDAD" ? 0 : 1), UNITS[unit].symbol, bare);
+  return join(decimal(qtyBase, UNITS[unit].decimals || 1), UNITS[unit].symbol, bare);
 }
 
 function join(value: string, symbol: string, bare: boolean) {

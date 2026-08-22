@@ -23,6 +23,21 @@ const SECTIONS = [
   { name: "Decoración", color: "violet", icon: "lamp", sortOrder: 4 },
 ];
 
+/** Los alojamientos del hotel, en el orden en que se recorren. */
+const ROOMS = [
+  { number: "Villa Girasol", floor: "Villas" },
+  { number: "Villa Heliconia", floor: "Villas" },
+  { number: "Loft Tulipán", floor: "Lofts" },
+  { number: "Loft Hortensia", floor: "Lofts" },
+  { number: "Loft Azucena", floor: "Lofts" },
+  { number: "Loft Cataleya", floor: "Lofts" },
+  { number: "Loft Amapola", floor: "Lofts" },
+  { number: "Caverna 1", floor: "Cavernas" },
+  { number: "Caverna 2", floor: "Cavernas" },
+  { number: "Mirador 1", floor: "Miradores" },
+  { number: "Mirador 2", floor: "Miradores" },
+];
+
 /** Qué es el producto. Da el color y el filtro rápido dentro de la lista. */
 const CATEGORIES = [
   { name: "Bebidas", color: "sky", icon: "cup-soda", sortOrder: 1 },
@@ -72,11 +87,26 @@ async function main() {
     data: { name: "Bodega central", kind: "PRINCIPAL", sortOrder: 0 },
   });
 
-  console.log("→ secciones y categorías");
+  console.log("→ categorías y subcategorías");
   await prisma.section.createMany({ data: SECTIONS });
   await prisma.category.createMany({ data: CATEGORIES });
 
+  console.log("→ alojamientos");
+  // Cada habitación nace con su minibar: nunca deberían existir por separado.
+  for (const [index, room] of ROOMS.entries()) {
+    const created = await prisma.room.create({ data: { ...room, sortOrder: index } });
+    await prisma.location.create({
+      data: {
+        name: `Minibar ${created.number}`,
+        kind: "MINIBAR",
+        roomId: created.id,
+        sortOrder: index,
+      },
+    });
+  }
+
   console.log("\n✓ Listo. Entrá con  admin / 2468");
+  console.log(`  ${ROOMS.length} alojamientos creados con su minibar.`);
   console.log("  La bodega arranca vacía: creá los productos desde /bodegas.");
 }
 

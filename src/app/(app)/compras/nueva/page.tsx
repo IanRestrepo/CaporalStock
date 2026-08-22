@@ -9,7 +9,7 @@ export const metadata = { title: "Nueva compra" };
 export default async function NuevaCompraPage() {
   await requireAdminPage();
 
-  const [suppliers, locations, products] = await Promise.all([
+  const [suppliers, locations, products, sections, categories] = await Promise.all([
     prisma.supplier.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
@@ -28,11 +28,22 @@ export default async function NuevaCompraPage() {
         name: true,
         baseUnit: true,
         perishable: true,
+        sectionId: true,
+        categoryId: true,
         presentations: {
           orderBy: { factor: "desc" },
           select: { id: true, name: true, factor: true },
         },
       },
+    }),
+    prisma.section.findMany({
+      where: { active: true },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true },
+    }),
+    prisma.category.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -46,6 +57,8 @@ export default async function NuevaCompraPage() {
       <PurchaseForm
         suppliers={suppliers}
         locations={locations}
+        sections={sections}
+        categories={categories}
         defaultLocationId={locations[0]?.id ?? ""}
         products={products.map((p) => ({
           ...p,

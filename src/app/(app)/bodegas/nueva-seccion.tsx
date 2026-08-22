@@ -13,19 +13,19 @@ export function NuevaSeccion() {
 
   return (
     <>
-      <Button variant="quiet" size="icon" aria-label="Nueva sección" onClick={() => setOpen(true)}>
+      <Button variant="quiet" size="icon" aria-label="Nueva categoría" onClick={() => setOpen(true)}>
         <Plus className="size-5" />
       </Button>
 
       <Sheet
         open={open}
         onClose={() => setOpen(false)}
-        title="Nueva sección"
-        description="Se puede editar o borrar después desde Ajustes › Secciones."
+        title="Nueva categoría"
+        description="Se puede editar o borrar después desde Ajustes › Categorías."
       >
         <TaxonomyForm
           draft={BLANK_TAXONOMY}
-          submitLabel="Crear sección"
+          submitLabel="Crear categoría"
           placeholder="p. ej. Lavandería"
           save={saveSection}
           onDone={() => setOpen(false)}

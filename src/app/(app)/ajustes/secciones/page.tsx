@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/session";
 import { SectionsAdmin, type SectionAdminRow } from "./sections-admin";
 
-export const metadata = { title: "Secciones" };
+export const metadata = { title: "Categorías" };
 
 export default async function SeccionesPage() {
   await requireAdminPage();
@@ -31,7 +31,7 @@ export default async function SeccionesPage() {
     <Screen>
       <PageHeader
         back={{ href: "/ajustes" }}
-        title="Secciones"
+        title="Categorías"
         subtitle="Por dónde se entra a la bodega."
       />
       <SectionsAdmin sections={rows} />
