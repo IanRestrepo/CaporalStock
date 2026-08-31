@@ -17,6 +17,7 @@ export type CountProduct = {
   name: string;
   baseUnit: BaseUnit;
   section: string;
+  category: string;
   color: string;
 };
 
@@ -61,15 +62,24 @@ export function CountSheet({
       : products;
   }, [products, query]);
 
-  /** Renglones agrupados por sección, conservando el orden plano para el foco. */
+  /**
+   * Dos niveles: el área donde se cuenta y, dentro, el tipo de producto.
+   * Un bar con treinta y cinco renglones seguidos es una pila; separado en
+   * licores, vinos, cervezas y gaseosas es el orden en que están los estantes.
+   * El índice plano se conserva para que el foco siga saltando en orden.
+   */
   const groups = useMemo(() => {
-    const map = new Map<string, { product: CountProduct; index: number }[]>();
+    const map = new Map<string, Map<string, { product: CountProduct; index: number }[]>>();
     visible.forEach((product, index) => {
-      const bucket = map.get(product.section);
-      if (bucket) bucket.push({ product, index });
-      else map.set(product.section, [{ product, index }]);
+      const bySection = map.get(product.section) ?? new Map();
+      const rows = bySection.get(product.category) ?? [];
+      rows.push({ product, index });
+      bySection.set(product.category, rows);
+      map.set(product.section, bySection);
     });
-    return [...map.entries()];
+    return [...map.entries()].map(
+      ([section, bySection]) => [section, [...bySection.entries()]] as const,
+    );
   }, [visible]);
 
   const ready = useMemo(
@@ -150,111 +160,123 @@ export function CountSheet({
         />
       </div>
 
-      <div className="space-y-6">
-        {groups.map(([section, rows]) => (
+      <div className="space-y-7">
+        {groups.map(([section, categories]) => (
           <section key={section}>
-            <p className="mb-2 px-1 text-2xs font-medium tracking-[0.12em] text-faint uppercase">
+            <p className="mb-3 px-1 text-2xs font-medium tracking-[0.12em] text-faint uppercase">
               {section}
             </p>
 
-            <div className="overflow-hidden rounded-card bg-surface">
-              <div className="divide-y divide-line">
-                {rows.map(({ product, index }) => {
-                  const raw = counted[product.id] ?? "";
-                  const value = parseNumber(raw);
-                  const system = stockOf(product.id);
-                  const delta = value !== null ? value - system : null;
+            <div className="space-y-4">
+              {categories.map(([category, rows]) => (
+                <div key={category}>
+                  <p className="mb-1.5 flex items-center gap-2 px-1 text-[0.8125rem] text-soft">
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ background: categoryColor(rows[0].product.color) }}
+                    />
+                    {category}
+                    <span className="text-faint tnum">{rows.length}</span>
+                  </p>
 
-                  return (
-                    <div key={product.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <span
-                        aria-hidden
-                        className="size-2 shrink-0 rounded-full"
-                        style={{ background: categoryColor(product.color) }}
-                      />
+                  <div className="overflow-hidden rounded-card bg-surface">
+                    <div className="divide-y divide-line">
+                      {rows.map(({ product, index }) => {
+                        const raw = counted[product.id] ?? "";
+                        const value = parseNumber(raw);
+                        const system = stockOf(product.id);
+                        const delta = value !== null ? value - system : null;
 
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[0.9375rem] leading-tight">{product.name}</p>
-                        <p
-                          className={cn(
-                            "mt-0.5 truncate text-[0.8125rem] tnum",
-                            delta === null
-                              ? "text-faint"
-                              : delta === 0
-                                ? "text-ok"
-                                : delta > 0
-                                  ? "text-info"
-                                  : "text-danger",
-                          )}
-                        >
-                          {delta === null ? (
-                            `sistema ${formatQty(system, product.baseUnit)}`
-                          ) : delta === 0 ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Check className="size-3" strokeWidth={3} />
-                              coincide
-                            </span>
-                          ) : (
-                            `${delta > 0 ? "sobran" : "faltan"} ${formatQty(Math.abs(delta), product.baseUnit)}`
-                          )}
-                        </p>
-                      </div>
+                        return (
+                          <div key={product.id} className="flex items-center gap-3 px-4 py-2.5">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[0.9375rem] leading-tight">
+                                {product.name}
+                              </p>
+                              <p
+                                className={cn(
+                                  "mt-0.5 truncate text-[0.8125rem] tnum",
+                                  delta === null
+                                    ? "text-faint"
+                                    : delta === 0
+                                      ? "text-ok"
+                                      : delta > 0
+                                        ? "text-info"
+                                        : "text-danger",
+                                )}
+                              >
+                                {delta === null ? (
+                                  `sistema ${formatQty(system, product.baseUnit)}`
+                                ) : delta === 0 ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <Check className="size-3" strokeWidth={3} />
+                                    coincide
+                                  </span>
+                                ) : (
+                                  `${delta > 0 ? "sobran" : "faltan"} ${formatQty(Math.abs(delta), product.baseUnit)}`
+                                )}
+                              </p>
+                            </div>
 
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <input
-                          ref={(el) => {
-                            inputs.current[index] = el;
-                          }}
-                          inputMode="decimal"
-                          enterKeyHint="next"
-                          autoComplete="off"
-                          value={raw}
-                          aria-label={`Cantidad contada de ${product.name}`}
-                          onChange={(e) =>
-                            setCounted((c) => ({ ...c, [product.id]: e.target.value }))
-                          }
-                          onFocus={(e) => e.currentTarget.select()}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              focusNext(index);
-                            }
-                          }}
-                          placeholder="—"
-                          className={cn(
-                            "h-11 w-20 rounded-[12px] bg-sunken px-2 text-center text-[1.0625rem] font-semibold tnum",
-                            "outline-none transition-colors placeholder:font-normal placeholder:text-faint",
-                            "focus:bg-raised focus:ring-2 focus:ring-accent-line",
-                            "[html[data-theme=light]_&]:bg-raised",
-                            value !== null && "text-ink",
-                          )}
-                        />
-                        <span className="w-6 shrink-0 text-[0.8125rem] text-faint">
-                          {UNITS[product.baseUnit].symbol}
-                        </span>
-                        {raw ? (
-                          <button
-                            type="button"
-                            aria-label={`Borrar el conteo de ${product.name}`}
-                            onClick={() =>
-                              setCounted((c) => {
-                                const next = { ...c };
-                                delete next[product.id];
-                                return next;
-                              })
-                            }
-                            className="press grid size-7 place-items-center rounded-[9px] text-faint hover:bg-raised hover:text-ink"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        ) : (
-                          <span className="size-7" />
-                        )}
-                      </div>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <input
+                                ref={(el) => {
+                                  inputs.current[index] = el;
+                                }}
+                                inputMode="decimal"
+                                enterKeyHint="next"
+                                autoComplete="off"
+                                value={raw}
+                                aria-label={`Cantidad contada de ${product.name}`}
+                                onChange={(e) =>
+                                  setCounted((c) => ({ ...c, [product.id]: e.target.value }))
+                                }
+                                onFocus={(e) => e.currentTarget.select()}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    focusNext(index);
+                                  }
+                                }}
+                                placeholder="—"
+                                className={cn(
+                                  "h-11 w-20 rounded-[12px] bg-sunken px-2 text-center text-[1.0625rem] font-semibold tnum",
+                                  "outline-none transition-colors placeholder:font-normal placeholder:text-faint",
+                                  "focus:bg-raised focus:ring-2 focus:ring-accent-line",
+                                  "[html[data-theme=light]_&]:bg-raised",
+                                  value !== null && "text-ink",
+                                )}
+                              />
+                              <span className="w-6 shrink-0 text-[0.8125rem] text-faint">
+                                {UNITS[product.baseUnit].symbol}
+                              </span>
+                              {raw ? (
+                                <button
+                                  type="button"
+                                  aria-label={`Borrar el conteo de ${product.name}`}
+                                  onClick={() =>
+                                    setCounted((c) => {
+                                      const next = { ...c };
+                                      delete next[product.id];
+                                      return next;
+                                    })
+                                  }
+                                  className="press grid size-7 place-items-center rounded-[9px] text-faint hover:bg-raised hover:text-ink"
+                                >
+                                  <X className="size-3.5" />
+                                </button>
+                              ) : (
+                                <span className="size-7" />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         ))}

@@ -22,13 +22,13 @@ export default async function InventarioPage() {
     }),
     prisma.product.findMany({
       where: { active: true },
-      orderBy: [{ section: { sortOrder: "asc" } }, { name: "asc" }],
+      orderBy: [{ section: { sortOrder: "asc" } }, { category: { sortOrder: "asc" } }, { name: "asc" }],
       select: {
         id: true,
         name: true,
         baseUnit: true,
         section: { select: { name: true, sortOrder: true } },
-        category: { select: { color: true } },
+        category: { select: { name: true, color: true } },
       },
     }),
     prisma.stock.findMany({ select: { productId: true, locationId: true, quantity: true } }),
@@ -77,6 +77,7 @@ export default async function InventarioPage() {
           name: p.name,
           baseUnit: p.baseUnit,
           section: p.section?.name ?? "Sin sección",
+          category: p.category?.name ?? "Sin categoría",
           color: p.category?.color ?? "slate",
         }))}
         onHand={onHand}

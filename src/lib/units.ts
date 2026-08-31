@@ -61,7 +61,11 @@ type FormatOptions = {
 };
 
 /**
- * 850 g · 1,25 kg · 700 ml · 2,4 L · 12 u
+ * 850 g · 1,25 kg · 700 ml · 2,4 L · 12 u · 1,75 u
+ *
+ * Las unidades admiten dos decimales porque una botella empezada se cuenta en
+ * fracciones: "1,75 u" son una botella llena y otra a tres cuartos. Redondear
+ * eso a "1,8" borra justo el dato por el que se molestaron en mirar el nivel.
  */
 export function formatQty(
   qtyBase: number,
@@ -78,7 +82,7 @@ export function formatQty(
   if (!exact && unit === "MILILITRO" && abs >= 1000) {
     return join(decimal(qtyBase / 1000, 2), "L", bare);
   }
-  return join(decimal(qtyBase, UNITS[unit].decimals || 1), UNITS[unit].symbol, bare);
+  return join(decimal(qtyBase, unit === "UNIDAD" ? 2 : 1), UNITS[unit].symbol, bare);
 }
 
 function join(value: string, symbol: string, bare: boolean) {
