@@ -123,19 +123,41 @@ export async function registerMovement(input: MovementInput) {
       },
     });
 
-    for (const line of lines) {
-      if (input.fromLocationId) {
-        await shiftStock(tx, line.productId, input.fromLocationId, -line.quantity);
-      }
-      if (input.toLocationId) {
-        await shiftStock(tx, line.productId, input.toLocationId, line.quantity);
-      }
-      if (input.type === "ENTRADA" && input.purchaseId && line.unitCost) {
-        await recalcAverageCost(tx, line.productId, line.quantity, line.unitCost);
+    // Los renglones ya vienen sin productos repetidos, así que ninguna de
+    // estas consultas toca la fila que toca otra. En fila, un traslado de doce
+    // productos son veinticuatro viajes a la base uno tras otro; en paralelo es
+    // uno. Con la base en otro país, esa diferencia es la que hacía que la
+    // transacción se venciera a mitad de camino.
+    await Promise.all(
+      lines.flatMap((line) => {
+        const trabajo: Promise<unknown>[] = [];
+        if (input.fromLocationId) {
+          trabajo.push(shiftStock(tx, line.productId, input.fromLocationId, -line.quantity));
+        }
+        if (input.toLocationId) {
+          trabajo.push(shiftStock(tx, line.productId, input.toLocationId, line.quantity));
+        }
+        return trabajo;
+      }),
+    );
+
+    // El costo promedio sí va después y de a uno: lee el total del producto,
+    // que las líneas anteriores acaban de cambiar.
+    if (input.type === "ENTRADA" && input.purchaseId) {
+      for (const line of lines) {
+        if (line.unitCost) {
+          await recalcAverageCost(tx, line.productId, line.quantity, line.unitCost);
+        }
       }
     }
 
     return movement;
+  },
+  {
+    // Cinco segundos alcanzan con la base al lado; con la base en São Paulo y
+    // un movimiento de muchos renglones, no.
+    timeout: 20000,
+    maxWait: 10000,
   });
 }
 
