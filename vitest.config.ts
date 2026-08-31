@@ -13,7 +13,9 @@ export default defineConfig({
     // Las pruebas tocan la base real y se pisarían entre sí en paralelo.
     fileParallelism: false,
     sequence: { concurrent: false },
-    testTimeout: 30000,
+    // La base vive en São Paulo: cada consulta es un viaje de ida y vuelta.
+    testTimeout: 60000,
+    hookTimeout: 60000,
     setupFiles: ["./tests/setup.ts"],
   },
 });

@@ -67,6 +67,19 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
+/** Sólo los movimientos de estas bodegas de laboratorio. Contar la tabla
+ *  entera se vuelve lento a medida que el hotel acumula historial. */
+async function movimientosDePrueba() {
+  return prisma.movement.count({
+    where: {
+      OR: [
+        { fromLocationId: { in: [bodegaA, bodegaB] } },
+        { toLocationId: { in: [bodegaA, bodegaB] } },
+      ],
+    },
+  });
+}
+
 async function saldo(locationId: string) {
   const row = await prisma.stock.findUnique({
     where: { productId_locationId: { productId, locationId } },
@@ -127,7 +140,7 @@ describe("motor de movimientos", () => {
 
   test("no se puede sacar más de lo que hay", async () => {
     const antes = await saldo(bodegaB);
-    const movimientos = await prisma.movement.count();
+    const movimientos = await movimientosDePrueba();
 
     await expect(
       registerMovement({
@@ -139,7 +152,7 @@ describe("motor de movimientos", () => {
     ).rejects.toBeInstanceOf(InventoryError);
 
     expect(await saldo(bodegaB)).toBe(antes);
-    expect(await prisma.movement.count()).toBe(movimientos);
+    expect(await movimientosDePrueba()).toBe(movimientos);
   });
 
   test("si un renglón falla, no entra ninguno", async () => {
