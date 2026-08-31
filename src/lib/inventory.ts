@@ -267,3 +267,74 @@ function mergeLines(lines: MovementLineInput[]): MovementLineInput[] {
   }
   return [...map.values()];
 }
+
+/**
+ * Aplica un conteo físico completo de una bodega.
+ *
+ * Agrupa las diferencias en dos movimientos —lo que sobró y lo que faltó— en
+ * vez de uno por producto: así el kardex cuenta la historia de un conteo, no de
+ * cuarenta correcciones sueltas. Los productos cuyo conteo coincide con el
+ * sistema no generan nada, porque no pasó nada.
+ */
+export async function applyPhysicalCount(params: {
+  locationId: string;
+  createdById: string;
+  counts: { productId: string; countedQty: number }[];
+  note?: string | null;
+}) {
+  const { locationId, createdById, counts, note } = params;
+
+  if (!counts.length) {
+    throw new InventoryError("El conteo no tiene productos.");
+  }
+
+  const current = await prisma.stock.findMany({
+    where: { locationId, productId: { in: counts.map((c) => c.productId) } },
+    select: { productId: true, quantity: true },
+  });
+  const onHand = new Map(current.map((row) => [row.productId, Number(row.quantity)]));
+
+  const surplus: { productId: string; quantity: number }[] = [];
+  const shortfall: { productId: string; quantity: number }[] = [];
+
+  for (const count of counts) {
+    const delta = round4(count.countedQty - (onHand.get(count.productId) ?? 0));
+    if (delta > 0) surplus.push({ productId: count.productId, quantity: delta });
+    else if (delta < 0) shortfall.push({ productId: count.productId, quantity: -delta });
+  }
+
+  if (!surplus.length && !shortfall.length) {
+    throw new InventoryError("El conteo coincide con el sistema; no hay nada que ajustar.");
+  }
+
+  const reason = "Conteo físico";
+  const movements = [];
+
+  if (surplus.length) {
+    movements.push(
+      await registerMovement({
+        type: "AJUSTE",
+        createdById,
+        toLocationId: locationId,
+        reason,
+        note: note ?? null,
+        lines: surplus,
+      }),
+    );
+  }
+
+  if (shortfall.length) {
+    movements.push(
+      await registerMovement({
+        type: "AJUSTE",
+        createdById,
+        fromLocationId: locationId,
+        reason,
+        note: note ?? null,
+        lines: shortfall,
+      }),
+    );
+  }
+
+  return { movements, sobrantes: surplus.length, faltantes: shortfall.length };
+}
