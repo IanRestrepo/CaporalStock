@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Refrigerator, Warehouse } from "lucide-react";
+import { ChevronRight, ConciergeBell, Refrigerator, Warehouse } from "lucide-react";
 import { Card, SectionLabel } from "@/components/ui/card";
 import { PageHeader, Screen } from "@/components/screen";
 import { formatMoneyCompact } from "@/lib/format";
@@ -67,6 +67,7 @@ export default async function BodegasPage() {
   ]);
 
   const central = locations.filter((l) => l.kind === "PRINCIPAL");
+  const areas = locations.filter((l) => l.kind === "AREA");
   const minibars = locations.filter((l) => l.kind === "MINIBAR");
 
   const plural = (n: number) => `${n} ${n === 1 ? "producto" : "productos"}`;
@@ -79,7 +80,7 @@ export default async function BodegasPage() {
     <Screen>
       <PageHeader
         title="Bodega"
-        subtitle="Todo el inventario vive en la bodega central."
+        subtitle="La bodega central, los puntos de servicio y los minibares."
         action={isAdmin ? <NuevaSeccion /> : null}
       />
 
@@ -108,6 +109,33 @@ export default async function BodegasPage() {
             ))}
           </div>
         </section>
+
+        {areas.length ? (
+          <section>
+            <SectionLabel className="mb-2.5">Puntos de servicio</SectionLabel>
+            <div className="space-y-2">
+              {areas.map((row) => (
+                <Card key={row.id} className="p-0">
+                  <Link
+                    href={`/bodegas/${row.id}`}
+                    className="press flex items-center gap-3.5 px-4 py-3.5"
+                  >
+                    <span className="grid size-10 shrink-0 place-items-center rounded-[13px] bg-raised text-soft">
+                      <ConciergeBell className="size-[18px]" strokeWidth={1.75} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[0.9375rem] font-medium">{row.name}</span>
+                      <span className="mt-0.5 block text-[0.8125rem] text-faint tnum">
+                        {detail(row.value, row.skus, row.low)}
+                      </span>
+                    </span>
+                    <ChevronRight className="size-4.5 shrink-0 text-faint" />
+                  </Link>
+                </Card>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {sections.length ? (
           <section>

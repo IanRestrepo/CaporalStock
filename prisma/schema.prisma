@@ -43,6 +43,7 @@ model User {
 /// El inventario del hotel vive en una sola bodega; las categorías lo ordenan.
 enum LocationKind {
   PRINCIPAL // bodega central
+  AREA      // punto de servicio: recepción, café bar, cocina
   MINIBAR   // nevera de una suite
 }
 
