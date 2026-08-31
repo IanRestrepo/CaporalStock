@@ -1,10 +1,15 @@
+import { PackageSearch } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Empty } from "@/components/ui/empty";
 import { PageHeader, Screen } from "@/components/screen";
 import { num } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireAdminPage } from "@/lib/session";
-import { ScanFlow, type ScanProduct } from "./scan-flow";
+import { CountSheet, type CountProduct } from "./count-sheet";
 
-export const metadata = { title: "Conteo con cámara" };
+export const metadata = { title: "Conteo" };
 
 export default async function InventarioPage() {
   await requireAdminPage();
@@ -17,17 +22,37 @@ export default async function InventarioPage() {
     }),
     prisma.product.findMany({
       where: { active: true },
-      orderBy: { name: "asc" },
+      orderBy: [{ section: { sortOrder: "asc" } }, { name: "asc" }],
       select: {
         id: true,
         name: true,
         baseUnit: true,
-        section: { select: { name: true } },
+        section: { select: { name: true, sortOrder: true } },
         category: { select: { color: true } },
       },
     }),
     prisma.stock.findMany({ select: { productId: true, locationId: true, quantity: true } }),
   ]);
+
+  if (!products.length) {
+    return (
+      <Screen>
+        <PageHeader back={{ href: "/bodegas" }} title="Conteo" />
+        <Card>
+          <Empty
+            icon={PackageSearch}
+            title="Todavía no hay productos"
+            body="El conteo compara lo que contás contra tu catálogo. Cargá los productos y volvé."
+            action={
+              <Button asChild variant="accent">
+                <Link href="/productos/nuevo">Crear el primer producto</Link>
+              </Button>
+            }
+          />
+        </Card>
+      </Screen>
+    );
+  }
 
   const onHand: Record<string, number> = {};
   for (const row of stock) {
@@ -38,16 +63,16 @@ export default async function InventarioPage() {
     <Screen>
       <PageHeader
         back={{ href: "/bodegas" }}
-        title="Conteo con cámara"
-        subtitle="Fotografiá la hoja y revisá lo que se leyó antes de aplicarlo."
+        title="Conteo"
+        subtitle="Recorré el estante y escribí lo que ves. Lo que no toques queda como está."
       />
-      <ScanFlow
+      <CountSheet
         locations={locations.map((l) => ({
           id: l.id,
           name: l.room ? `${l.name} · Suite ${l.room.number}` : l.name,
           kind: l.kind,
         }))}
-        products={products.map<ScanProduct>((p) => ({
+        products={products.map<CountProduct>((p) => ({
           id: p.id,
           name: p.name,
           baseUnit: p.baseUnit,
