@@ -32,7 +32,7 @@ const lineSchema = z.object({
 const purchaseSchema = z.object({
   supplierId: z.string().min(1, "Elegí el proveedor."),
   number: z.string().trim().min(1, "Falta el número de la factura."),
-  locationId: z.string().min(1, "Elegí a qué bodega entra la mercancía."),
+  locationId: z.string().min(1, "Elige a qué bodega entra la mercancía."),
   issuedAt: z.string().min(1),
   tax: z.number().min(0).default(0),
   notes: z.string().max(500).nullable().optional(),

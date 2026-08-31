@@ -52,7 +52,7 @@ export default async function NuevaCompraPage() {
       <PageHeader
         back={{ href: "/compras" }}
         title="Nueva compra"
-        subtitle="Cargá la factura tal como llegó; el sistema hace las conversiones."
+        subtitle="Carga la factura tal como llegó; el sistema hace las conversiones."
       />
       <PurchaseForm
         suppliers={suppliers}

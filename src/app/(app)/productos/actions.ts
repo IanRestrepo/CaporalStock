@@ -8,7 +8,7 @@ import { actor } from "@/lib/session";
 const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().trim().min(2, "El nombre es muy corto."),
-  categoryId: z.string().min(1, "Elegí una subcategoría."),
+  categoryId: z.string().min(1, "Elige una subcategoría."),
   sectionId: z
     .string()
     .nullable()
@@ -50,7 +50,7 @@ export async function saveProduct(input: unknown): Promise<SaveResult> {
 
 const presentationSchema = z.object({
   productId: z.string().min(1),
-  name: z.string().trim().min(1, "Ponele nombre a la presentación."),
+  name: z.string().trim().min(1, "Ponle nombre a la presentación."),
   factor: z.number().positive("El contenido debe ser mayor a cero."),
 });
 

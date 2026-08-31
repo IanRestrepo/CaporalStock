@@ -12,7 +12,7 @@ export type LoginState = { error: string } | undefined;
  * sin efectos que reaccionen a un estado anterior.
  */
 export async function login(username: string, pin: string): Promise<LoginState> {
-  if (!username.trim()) return { error: "Escribí tu usuario." };
+  if (!username.trim()) return { error: "Escribe tu usuario." };
   if (!isValidPin(pin)) return { error: "El PIN son 4 a 6 dígitos." };
 
   const user = await authenticate(username, pin);

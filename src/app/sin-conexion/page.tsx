@@ -13,7 +13,7 @@ export default function OfflinePage() {
         Caporal necesita señal para mostrarte saldos reales. Un inventario en frío
         miente, así que preferimos no mostrarte nada.
       </p>
-      <p className="mt-6 text-[0.8125rem] text-faint">Volvé a intentar cuando recuperes datos.</p>
+      <p className="mt-6 text-[0.8125rem] text-faint">Vuelve a intentar cuando recuperes datos.</p>
     </div>
   );
 }

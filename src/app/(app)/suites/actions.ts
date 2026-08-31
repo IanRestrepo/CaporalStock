@@ -188,7 +188,7 @@ export async function copyMinibarPar(
   if (!user) return { ok: false, error };
 
   if (fromLocationId === toLocationId) {
-    return { ok: false, error: "Elegí una suite distinta para copiar." };
+    return { ok: false, error: "Elige una suite distinta para copiar." };
   }
 
   try {

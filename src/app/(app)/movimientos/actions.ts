@@ -17,7 +17,7 @@ const movementSchema = z.object({
   roomId: z.string().nullable().optional(),
   reason: z.string().max(120).nullable().optional(),
   note: z.string().max(500).nullable().optional(),
-  lines: z.array(lineSchema).min(1, "Agregá al menos un producto."),
+  lines: z.array(lineSchema).min(1, "Agrega al menos un producto."),
 });
 
 export type ActionResult = { ok: true; id: string } | { ok: false; error: string };
@@ -63,7 +63,7 @@ const countSchema = z.object({
   productId: z.string().min(1),
   locationId: z.string().min(1),
   countedQty: z.number().min(0),
-  reason: z.string().min(1, "Contá por qué estás ajustando."),
+  reason: z.string().min(1, "Cuenta por qué estás ajustando."),
   note: z.string().max(500).nullable().optional(),
 });
 

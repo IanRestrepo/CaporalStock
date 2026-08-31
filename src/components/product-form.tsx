@@ -105,7 +105,7 @@ export function ProductForm({
           value={form.categoryId}
           onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
         >
-          <option value="">Elegí una</option>
+          <option value="">Elige una</option>
           {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}

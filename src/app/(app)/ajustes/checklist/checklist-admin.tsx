@@ -172,7 +172,7 @@ export function ChecklistAdmin({
                   value={draft.productId}
                   onChange={(e) => setDraft({ ...draft, productId: e.target.value })}
                 >
-                  <option value="">Elegí uno</option>
+                  <option value="">Elige uno</option>
                   {products.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}

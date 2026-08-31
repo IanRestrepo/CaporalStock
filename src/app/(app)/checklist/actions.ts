@@ -9,7 +9,7 @@ import { actor } from "@/lib/session";
 const schema = z.object({
   roomId: z.string().min(1),
   templateId: z.string().min(1),
-  sourceLocationId: z.string().min(1, "Elegí de qué bodega sale la dotación."),
+  sourceLocationId: z.string().min(1, "Elige de qué bodega sale la dotación."),
   note: z.string().max(500).nullable().optional(),
   items: z
     .array(
@@ -63,7 +63,7 @@ export async function submitChecklist(input: unknown): Promise<ChecklistResult> 
       const label = byId.get(missingNote.templateItemId)?.label ?? "un ítem";
       return {
         ok: false,
-        error: `Contá qué pasó con ${label.toLowerCase()}: sin la nota, el reporte no sirve de nada.`,
+        error: `Cuenta qué pasó con ${label.toLowerCase()}: sin la nota, el reporte no sirve de nada.`,
       };
     }
 

@@ -42,7 +42,7 @@ export default async function InventarioPage() {
           <Empty
             icon={PackageSearch}
             title="Todavía no hay productos"
-            body="El conteo compara lo que contás contra tu catálogo. Cargá los productos y volvé."
+            body="El conteo compara lo que cuentas contra tu catálogo. Carga los productos y vuelve."
             action={
               <Button asChild variant="accent">
                 <Link href="/productos/nuevo">Crear el primer producto</Link>
@@ -64,7 +64,7 @@ export default async function InventarioPage() {
       <PageHeader
         back={{ href: "/bodegas" }}
         title="Conteo"
-        subtitle="Recorré el estante y escribí lo que ves. Lo que no toques queda como está."
+        subtitle="Recorre el estante y escribe lo que ves. Lo que no toques queda como está."
       />
       <CountSheet
         locations={locations.map((l) => ({

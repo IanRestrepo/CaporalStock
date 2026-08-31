@@ -299,7 +299,7 @@ export function CountSheet({
 
       <p className="px-1 text-center text-[0.8125rem] leading-relaxed text-faint">
         Un campo vacío significa que no lo contaste, y ese producto no se toca.
-        Para decir que no queda nada, escribí 0.
+        Para decir que no queda nada, escribe 0.
       </p>
 
       {/* Barra fija: el resumen y el botón siempre al alcance del pulgar,

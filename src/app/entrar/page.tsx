@@ -31,7 +31,7 @@ export default async function LoginPage() {
       </div>
 
       <p className="pb-4 text-center text-[0.8125rem] text-faint">
-        ¿Olvidaste tu PIN? Pedile a administración que lo restablezca.
+        ¿Olvidaste tu PIN? Pídele a administración que lo restablezca.
       </p>
     </div>
   );

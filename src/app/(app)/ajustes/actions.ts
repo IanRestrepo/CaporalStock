@@ -83,16 +83,16 @@ export async function saveUser(input: unknown): Promise<Result> {
   const { id, pin, ...data } = parsed.data;
 
   if (!id && !isValidPin(pin ?? "")) {
-    return { ok: false, error: "Asignale un PIN de 4 a 6 dígitos." };
+    return { ok: false, error: "Asígnale un PIN de 4 a 6 dígitos." };
   }
   if (pin && !isValidPin(pin)) {
     return { ok: false, error: "El PIN debe tener 4 a 6 dígitos." };
   }
   if (id === user.id && !data.active) {
-    return { ok: false, error: "No podés desactivar tu propia cuenta." };
+    return { ok: false, error: "No puedes desactivar tu propia cuenta." };
   }
   if (id === user.id && data.role !== "ADMIN") {
-    return { ok: false, error: "No podés quitarte el rol de administrador." };
+    return { ok: false, error: "No puedes quitarte el rol de administrador." };
   }
 
   try {

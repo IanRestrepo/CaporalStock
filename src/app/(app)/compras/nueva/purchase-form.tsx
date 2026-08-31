@@ -151,7 +151,7 @@ export function PurchaseForm({
               onChange={(e) => setSupplierId(e.target.value)}
               className="min-w-0 flex-1"
             >
-              <option value="">Elegí uno</option>
+              <option value="">Elige uno</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -324,7 +324,7 @@ export function PurchaseForm({
             onClick={() => setPicker(true)}
             className="press w-full rounded-[16px] bg-sunken py-7 text-[0.875rem] text-faint hover:text-soft"
           >
-            Agregá lo que trae la factura
+            Agrega lo que trae la factura
           </button>
         )}
       </div>
@@ -369,7 +369,7 @@ export function PurchaseForm({
             {attachment ? attachment.name : "Adjuntar la factura"}
           </span>
           <span className="block text-[0.8125rem] opacity-70">
-            {attachment ? "Tocá para cambiarla" : "PDF o foto, hasta 8 MB"}
+            {attachment ? "Toca para cambiarla" : "PDF o foto, hasta 8 MB"}
           </span>
         </span>
       </button>

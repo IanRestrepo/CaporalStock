@@ -133,7 +133,7 @@ export function MinibarSetup({
                 className="h-11 flex-1 text-[0.875rem]"
                 aria-label="Copiar desde"
               >
-                <option value="">Elegí una suite</option>
+                <option value="">Elige una suite</option>
                 {otherSuites.map((suite) => (
                   <option key={suite.locationId} value={suite.locationId}>
                     Suite {suite.number}

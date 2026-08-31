@@ -58,7 +58,7 @@ export default async function InicioPage() {
         subtitle={
           isAdmin
             ? "Resumen del hotel al día de hoy."
-            : "Esto es lo que tenés a la mano hoy."
+            : "Esto es lo que tienes a la mano hoy."
         }
       />
 

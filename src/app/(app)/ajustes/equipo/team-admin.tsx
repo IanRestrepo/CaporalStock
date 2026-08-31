@@ -141,7 +141,7 @@ export function TeamAdmin({ members }: { members: TeamMember[] }) {
 
             <Field
               label={draft.id ? "Nuevo PIN" : "PIN"}
-              hint={draft.id ? "Dejalo vacío para no cambiarlo." : "4 a 6 dígitos."}
+              hint={draft.id ? "Déjalo vacío para no cambiarlo." : "4 a 6 dígitos."}
             >
               <Input
                 inputMode="numeric"

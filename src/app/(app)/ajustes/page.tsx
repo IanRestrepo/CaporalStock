@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ChevronRight,
   ClipboardList,
+  Play,
   LayoutGrid,
   MapPin,
   Shapes,
@@ -76,6 +77,22 @@ export default async function AjustesPage() {
           </p>
         </div>
       </Card>
+
+      <Link
+        href="/tutorial"
+        className="press mb-7 flex items-center gap-4 rounded-card bg-surface px-5 py-4 hover:bg-raised"
+      >
+        <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-accent-ink">
+          <Play className="size-[18px] translate-x-px" strokeWidth={2.5} fill="currentColor" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[0.9375rem] font-semibold">Cómo funciona Caporal</span>
+          <span className="mt-0.5 block text-[0.8125rem] text-faint">
+            Un recorrido corto por el sistema, paso a paso
+          </span>
+        </span>
+        <ChevronRight className="size-4.5 shrink-0 text-faint" />
+      </Link>
 
       <SectionLabel className="mb-2.5">
         <span className="inline-flex items-center gap-1.5">

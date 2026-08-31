@@ -260,7 +260,7 @@ export function ChecklistRun({
 
       {done < items.length ? (
         <p className="px-1 text-center text-[0.8125rem] text-faint">
-          Quedan {items.length - done} sin marcar. Podés cerrar igual.
+          Quedan {items.length - done} sin marcar. Puedes cerrar igual.
         </p>
       ) : null}
     </div>

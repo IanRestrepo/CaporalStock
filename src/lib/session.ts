@@ -94,7 +94,7 @@ export async function requireAdminPage(): Promise<SessionUser> {
  */
 export async function actor(role: "ADMIN" | "CUALQUIERA" = "CUALQUIERA") {
   const user = await getSessionUser();
-  if (!user) return { user: null, error: "Tu sesión venció. Volvé a entrar." } as const;
+  if (!user) return { user: null, error: "Tu sesión venció. Vuelve a entrar." } as const;
   if (role === "ADMIN" && user.role !== "ADMIN") {
     return { user: null, error: "Esta acción sólo la puede hacer un administrador." } as const;
   }

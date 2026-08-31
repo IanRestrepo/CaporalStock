@@ -68,7 +68,7 @@ export function PinForm() {
               autoComplete="off"
             />
           </Field>
-          <Field label="Repetilo">
+          <Field label="Repítelo">
             <Input
               inputMode="numeric"
               type="password"

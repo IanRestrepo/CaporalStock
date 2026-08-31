@@ -122,8 +122,8 @@ export function MovementForm({
     if (needs.from && !from) return "Elegí de dónde sale.";
     if (needs.to && !to) return "Elegí a dónde entra.";
     if (type === "TRASLADO" && from === to) return "El origen y el destino son la misma bodega.";
-    if (!lines.length) return "Agregá al menos un producto.";
-    if (type === "DANIO" && !reason) return "Elegí el motivo del daño.";
+    if (!lines.length) return "Agrega al menos un producto.";
+    if (type === "DANIO" && !reason) return "Elige el motivo del daño.";
     for (const line of lines) {
       if (sourceId && line.quantity > stockOf(line.productId)) {
         return `No hay tanto ${productById.get(line.productId)?.name} en esa bodega.`;
@@ -194,7 +194,7 @@ export function MovementForm({
         {needs.from ? (
           <Field label="Sale de" htmlFor="origen">
             <Select id="origen" value={from} onChange={(e) => setFrom(e.target.value)}>
-              <option value="">Elegí una bodega</option>
+              <option value="">Elige una bodega</option>
               {locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
@@ -207,7 +207,7 @@ export function MovementForm({
         {needs.to ? (
           <Field label="Entra a" htmlFor="destino">
             <Select id="destino" value={to} onChange={(e) => setTo(e.target.value)}>
-              <option value="">Elegí una bodega</option>
+              <option value="">Elige una bodega</option>
               {locations
                 .filter((l) => l.id !== from)
                 .map((l) => (

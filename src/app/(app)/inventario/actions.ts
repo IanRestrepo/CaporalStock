@@ -6,7 +6,7 @@ import { InventoryError, applyPhysicalCount } from "@/lib/inventory";
 import { actor } from "@/lib/session";
 
 const countSchema = z.object({
-  locationId: z.string().min(1, "Elegí la bodega que contaste."),
+  locationId: z.string().min(1, "Elige la bodega que contaste."),
   note: z.string().max(500).nullable().optional(),
   counts: z
     .array(
