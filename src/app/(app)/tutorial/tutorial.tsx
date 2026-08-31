@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { marcarPaso, olvidarPaso } from "@/components/tutorial-return";
 import { stepsFor } from "./steps";
 
 /**
@@ -47,7 +48,10 @@ export function Tutorial({
     [total],
   );
 
-  const salir = useCallback(() => router.push("/ajustes"), [router]);
+  const salir = useCallback(() => {
+    olvidarPaso();
+    router.push("/ajustes");
+  }, [router]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -122,13 +126,20 @@ export function Tutorial({
         {step.visual ? <div className="mt-6">{step.visual}</div> : null}
 
         {step.go ? (
-          <Link
-            href={step.go.href}
-            className="press mt-5 inline-flex items-center gap-2 rounded-control bg-raised px-4 py-3 text-[0.875rem] font-medium hover:bg-hover"
-          >
-            {step.go.label}
-            <ArrowRight className="size-4" />
-          </Link>
+          <div className="mt-5">
+            <Link
+              href={step.go.href}
+              onClick={() => marcarPaso(index + 1)}
+              className="press inline-flex items-center gap-2 rounded-control bg-raised px-4 py-3 text-[0.875rem] font-medium hover:bg-hover"
+            >
+              {step.go.label}
+              <ArrowRight className="size-4" />
+            </Link>
+            <p className="mt-2.5 text-[0.8125rem] leading-relaxed text-faint">
+              Es la pantalla real: lo que hagas ahí queda guardado en el inventario. Para volver
+              acá vas a ver un botón abajo.
+            </p>
+          </div>
         ) : null}
       </div>
 

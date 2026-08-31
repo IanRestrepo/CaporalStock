@@ -160,7 +160,7 @@ export const STEPS: Step[] = [
         Pasar producto de un lado a otro es un traslado y queda registrado.
       </>
     ),
-    go: { href: "/bodegas", label: "Ver las bodegas" },
+    go: { href: "/bodegas", label: "Abrir esta pantalla" },
     visual: (
       <Frame className="space-y-2">
         <Row color="var(--accent)" name="Bodega central" detail="donde llega la mercancía" />
@@ -188,7 +188,7 @@ export const STEPS: Step[] = [
         mercancía y corregir conteos es de administración.
       </>
     ),
-    go: { href: "/movimientos/nuevo", label: "Probar a registrar uno" },
+    go: { href: "/movimientos/nuevo", label: "Abrir esta pantalla" },
     visual: (
       <Frame className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
@@ -220,7 +220,7 @@ export const STEPS: Step[] = [
         nada, escribe 0.
       </>
     ),
-    go: { href: "/inventario", label: "Abrir el conteo" },
+    go: { href: "/inventario", label: "Abrir esta pantalla" },
     visual: (
       <Frame className="space-y-2">
         <Row
@@ -256,7 +256,7 @@ export const STEPS: Step[] = [
         del inventario.
       </>
     ),
-    go: { href: "/suites", label: "Ver las suites" },
+    go: { href: "/suites", label: "Abrir esta pantalla" },
     visual: (
       <Frame className="space-y-2">
         <Row
@@ -295,7 +295,7 @@ export const STEPS: Step[] = [
         movimiento, así que cambiar un precio hoy no altera los reportes de meses anteriores.
       </>
     ),
-    go: { href: "/compras/nueva", label: "Registrar una factura" },
+    go: { href: "/compras/nueva", label: "Abrir esta pantalla" },
     visual: (
       <Frame className="space-y-2">
         <Row color="var(--cat-amber)" name="Factura FE-1042" detail="Distribuidora La Sabana" right={<Chip tone="ok">confirmada</Chip>} />
@@ -320,7 +320,7 @@ export const STEPS: Step[] = [
         En Reportes ves entradas, salidas, mermas por motivo, consumo por suite y utilidad.
       </>
     ),
-    go: { href: "/alertas", label: "Ver las alertas" },
+    go: { href: "/alertas", label: "Abrir esta pantalla" },
     visual: (
       <Frame className="space-y-2">
         <Row color="var(--cat-coral)" name="Mantequilla · Bodega central" detail="1,25 kg de 1,5 kg" right={<span className="text-[0.8125rem] font-semibold text-warn tnum">83%</span>} />
