@@ -1,9 +1,11 @@
 "use client";
 
+import { borrarPractica } from "@/app/(app)/tutorial/actions";
 import { cn } from "@/lib/cn";
+import { PRACTICE_ROUTES } from "@/lib/practice-routes";
 import { ArrowLeft, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 
 export const TUTORIAL_KEY = "caporal_tutorial_paso";
 
@@ -55,10 +57,37 @@ export function olvidarPaso() {
   listeners.forEach((l) => l());
 }
 
+/**
+ * ¿Esta ruta todavía es parte del tutorial?
+ *
+ * El tutorial manda a las pantallas reales a propósito, así que estar en
+ * /movimientos/nuevo con el marcador puesto no es haberse ido: es haber ido a
+ * practicar. Irse es cualquier otra pantalla.
+ */
+function sigueAdentro(pathname: string) {
+  if (pathname.startsWith("/tutorial")) return true;
+  return PRACTICE_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}
+
 export function TutorialReturn() {
   const pathname = usePathname();
   const router = useRouter();
   const saved = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  const limpiando = useRef(false);
+
+  // Salir del tutorial se lleva la práctica. No se pregunta: lo que hay ahí es
+  // de mentira por definición, y dejarlo sería exactamente lo que la práctica
+  // existe para evitar.
+  useEffect(() => {
+    if (!saved || sigueAdentro(pathname) || limpiando.current) return;
+    limpiando.current = true;
+    olvidarPaso();
+    borrarPractica().finally(() => {
+      limpiando.current = false;
+    });
+  }, [pathname, saved]);
 
   const step = Number(saved);
   if (!saved || !Number.isFinite(step) || step < 1) return null;
@@ -83,7 +112,10 @@ export function TutorialReturn() {
         </button>
         <button
           type="button"
-          onClick={olvidarPaso}
+          onClick={() => {
+            olvidarPaso();
+            void borrarPractica();
+          }}
           aria-label="No volver al tutorial"
           className="press grid size-7 shrink-0 place-items-center rounded-full text-faint hover:bg-hover hover:text-ink"
         >

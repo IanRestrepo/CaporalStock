@@ -29,7 +29,7 @@ export default async function BodegasPage() {
              r.number     AS room,
              COALESCE(SUM(s.quantity * p."costPrice"), 0)::text AS value,
              CASE WHEN l.kind = 'PRINCIPAL'
-                  THEN (SELECT COUNT(*) FROM "Product" WHERE active)
+                  THEN (SELECT COUNT(*) FROM "Product" WHERE active AND NOT practice)
                   ELSE COUNT(*) FILTER (WHERE s.quantity > 0)
              END AS skus,
              COUNT(*) FILTER (
@@ -39,8 +39,8 @@ export default async function BodegasPage() {
         FROM "Location" l
         LEFT JOIN "Room"    r ON r.id = l."roomId"
         LEFT JOIN "Stock"   s ON s."locationId" = l.id
-        LEFT JOIN "Product" p ON p.id = s."productId" AND p.active
-       WHERE l.active
+        LEFT JOIN "Product" p ON p.id = s."productId" AND p.active AND NOT p.practice
+       WHERE l.active AND NOT l.practice
        GROUP BY l.id, l.name, l.kind, r.number
        ORDER BY l.kind, l."sortOrder", l.name
     `,
@@ -57,8 +57,8 @@ export default async function BodegasPage() {
                  AND COALESCE(st.quantity, 0) < COALESCE(NULLIF(st."minQty", 0), p."minQty")
              ) AS low
         FROM "Section" sec
-        LEFT JOIN "Product"  p  ON p."sectionId" = sec.id AND p.active
-        LEFT JOIN "Location" b  ON b.kind = 'PRINCIPAL' AND b.active
+        LEFT JOIN "Product"  p  ON p."sectionId" = sec.id AND p.active AND NOT p.practice
+        LEFT JOIN "Location" b  ON b.kind = 'PRINCIPAL' AND b.active AND NOT b.practice
         LEFT JOIN "Stock"    st ON st."productId" = p.id AND st."locationId" = b.id
        WHERE sec.active
        GROUP BY sec.id, sec.name, sec.icon, sec."sortOrder"

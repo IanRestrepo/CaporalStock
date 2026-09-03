@@ -19,6 +19,44 @@ let categoriaId: string;
 const marca = `test-${Date.now()}`;
 
 beforeAll(async () => {
+  // Barrer lo que dejaron corridas que se cayeron antes de limpiar.
+  const viejas = await prisma.category.findMany({
+    where: { name: { startsWith: "Pruebas test-" } },
+    select: { id: true, products: { select: { id: true } } },
+  });
+  const viejosProductos = viejas.flatMap((c) => c.products.map((p) => p.id));
+  if (viejosProductos.length) {
+    await prisma.movementLine.deleteMany({ where: { productId: { in: viejosProductos } } });
+    await prisma.stock.deleteMany({ where: { productId: { in: viejosProductos } } });
+    await prisma.presentation.deleteMany({ where: { productId: { in: viejosProductos } } });
+    await prisma.lot.deleteMany({ where: { productId: { in: viejosProductos } } });
+    await prisma.product.deleteMany({ where: { id: { in: viejosProductos } } });
+  }
+  if (viejas.length) {
+    await prisma.category.deleteMany({ where: { id: { in: viejas.map((c) => c.id) } } });
+  }
+  const viejasBodegas = await prisma.location.findMany({
+    where: { name: { startsWith: "Bodega A test-" } },
+    select: { id: true },
+  });
+  const viejasB = await prisma.location.findMany({
+    where: { name: { startsWith: "Bodega B test-" } },
+    select: { id: true },
+  });
+  const ids = [...viejasBodegas, ...viejasB].map((l) => l.id);
+  if (ids.length) {
+    await prisma.movement.updateMany({
+      where: { fromLocationId: { in: ids } },
+      data: { fromLocationId: null },
+    });
+    await prisma.movement.updateMany({
+      where: { toLocationId: { in: ids } },
+      data: { toLocationId: null },
+    });
+    await prisma.stock.deleteMany({ where: { locationId: { in: ids } } });
+    await prisma.location.deleteMany({ where: { id: { in: ids } } });
+  }
+
   const admin = await prisma.user.findFirstOrThrow({ where: { role: "ADMIN" } });
   adminId = admin.id;
 
@@ -27,9 +65,12 @@ beforeAll(async () => {
   });
   categoriaId = categoria.id;
 
+  // El laboratorio vive detrás de la misma marca que la práctica del tutorial.
+  // Así, si una corrida se cae antes de limpiar, lo que quede es invisible para
+  // el hotel en vez de aparecer como una bodega más en la pantalla.
   const [a, b] = await Promise.all([
-    prisma.location.create({ data: { name: `Bodega A ${marca}`, kind: "PRINCIPAL" } }),
-    prisma.location.create({ data: { name: `Bodega B ${marca}`, kind: "PRINCIPAL" } }),
+    prisma.location.create({ data: { name: `Bodega A ${marca}`, kind: "PRINCIPAL", practice: true } }),
+    prisma.location.create({ data: { name: `Bodega B ${marca}`, kind: "PRINCIPAL", practice: true } }),
   ]);
   bodegaA = a.id;
   bodegaB = b.id;
@@ -42,6 +83,7 @@ beforeAll(async () => {
       costPrice: 10,
       salePrice: 25,
       minQty: 100,
+      practice: true,
     },
   });
   productId = producto.id;
@@ -55,15 +97,34 @@ beforeAll(async () => {
   });
 });
 
+/**
+ * La limpieza no puede rendirse a la mitad.
+ *
+ * Si un paso falla —un producto todavía referenciado, una bodega con saldo— el
+ * resto igual tiene que correr: lo que quede a medias aparece en el catálogo
+ * del hotel, y una prueba que ensucia el inventario real es peor que ninguna.
+ */
+async function limpiar(paso: () => Promise<unknown>) {
+  try {
+    await paso();
+  } catch (err) {
+    console.error("limpieza incompleta:", err);
+  }
+}
+
 afterAll(async () => {
   await prisma.movementLine.deleteMany({ where: { productId } });
   await prisma.movement.deleteMany({
     where: { OR: [{ fromLocationId: { in: [bodegaA, bodegaB] } }, { toLocationId: { in: [bodegaA, bodegaB] } }] },
   });
-  await prisma.stock.deleteMany({ where: { productId } });
-  await prisma.product.delete({ where: { id: productId } });
-  await prisma.category.delete({ where: { id: categoriaId } });
-  await prisma.location.deleteMany({ where: { id: { in: [bodegaA, bodegaB] } } });
+  await limpiar(() => prisma.stock.deleteMany({ where: { productId } }));
+  await limpiar(() => prisma.presentation.deleteMany({ where: { productId } }));
+  await limpiar(() => prisma.lot.deleteMany({ where: { productId } }));
+  await limpiar(() => prisma.product.delete({ where: { id: productId } }));
+  await limpiar(() => prisma.category.delete({ where: { id: categoriaId } }));
+  await limpiar(() =>
+    prisma.location.deleteMany({ where: { id: { in: [bodegaA, bodegaB] } } }),
+  );
   await prisma.$disconnect();
 });
 

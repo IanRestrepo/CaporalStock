@@ -65,7 +65,7 @@ export default async function SuitePage({ params }: PageProps<"/suites/[id]">) {
   const [catalog, siblings] = isAdmin
     ? await Promise.all([
         prisma.product.findMany({
-          where: { active: true },
+          where: { active: true, practice: false },
           orderBy: [{ category: { sortOrder: "asc" } }, { name: "asc" }],
           select: {
             id: true,

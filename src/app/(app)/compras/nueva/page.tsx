@@ -16,12 +16,12 @@ export default async function NuevaCompraPage() {
       select: { id: true, name: true },
     }),
     prisma.location.findMany({
-      where: { active: true, kind: "PRINCIPAL" },
+      where: { active: true, kind: "PRINCIPAL", practice: false },
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),
     prisma.product.findMany({
-      where: { active: true },
+      where: { active: true, practice: false },
       orderBy: { name: "asc" },
       select: {
         id: true,

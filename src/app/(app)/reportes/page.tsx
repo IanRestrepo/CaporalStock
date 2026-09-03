@@ -208,7 +208,7 @@ async function topProducts(start: Date, end: Date) {
            SUM(ml.quantity * ml."unitCost")::text            AS cost
       FROM "MovementLine" ml
       JOIN "Movement" m  ON m.id = ml."movementId"
-      JOIN "Product"  p  ON p.id = ml."productId"
+      JOIN "Product"  p  ON p.id = ml."productId" AND NOT p.practice
       JOIN "Category" c  ON c.id = p."categoryId"
      WHERE m.type IN ('CONSUMO', 'DANIO')
        AND m."occurredAt" >= ${start} AND m."occurredAt" < ${end}

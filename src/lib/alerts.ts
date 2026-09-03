@@ -55,8 +55,8 @@ export async function getLowStock(limit?: number): Promise<LowStockAlert[]> {
            s.quantity::text AS quantity,
            COALESCE(NULLIF(s."minQty", 0), p."minQty")::text AS threshold
       FROM "Stock" s
-      JOIN "Product"  p ON p.id = s."productId"
-      JOIN "Location" l ON l.id = s."locationId"
+      JOIN "Product"  p ON p.id = s."productId" AND NOT p.practice
+      JOIN "Location" l ON l.id = s."locationId" AND NOT l.practice
       JOIN "Category" c ON c.id = p."categoryId"
      WHERE p.active AND l.active
        AND COALESCE(NULLIF(s."minQty", 0), p."minQty") > 0
@@ -90,7 +90,7 @@ export async function getExpiring(days = EXPIRY_WINDOW_DAYS): Promise<ExpiryAler
   cutoff.setDate(cutoff.getDate() + days);
 
   const lots = await prisma.lot.findMany({
-    where: { expiresAt: { not: null, lte: cutoff } },
+    where: { expiresAt: { not: null, lte: cutoff }, product: { practice: false } },
     orderBy: { expiresAt: "asc" },
     select: {
       id: true,

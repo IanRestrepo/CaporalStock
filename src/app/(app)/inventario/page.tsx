@@ -18,7 +18,7 @@ export default async function InventarioPage() {
     prisma.location.findMany({
       where: { active: true },
       orderBy: [{ kind: "asc" }, { sortOrder: "asc" }],
-      select: { id: true, name: true, kind: true, room: { select: { number: true } } },
+      select: { id: true, name: true, kind: true, practice: true, room: { select: { number: true } } },
     }),
     prisma.product.findMany({
       where: { active: true },
@@ -27,6 +27,7 @@ export default async function InventarioPage() {
         id: true,
         name: true,
         baseUnit: true,
+        practice: true,
         section: { select: { name: true, sortOrder: true } },
         category: { select: { name: true, color: true } },
       },
@@ -71,11 +72,13 @@ export default async function InventarioPage() {
           id: l.id,
           name: l.room ? `${l.name} · Suite ${l.room.number}` : l.name,
           kind: l.kind,
+          practice: l.practice,
         }))}
         products={products.map<CountProduct>((p) => ({
           id: p.id,
           name: p.name,
           baseUnit: p.baseUnit,
+          practice: p.practice,
           section: p.section?.name ?? "Sin sección",
           category: p.category?.name ?? "Sin categoría",
           color: p.category?.color ?? "slate",

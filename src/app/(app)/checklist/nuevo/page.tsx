@@ -17,33 +17,54 @@ export default async function NuevaRevisionPage({ searchParams }: PageProps<"/ch
 
   if (!roomId) redirect("/suites");
 
-  const [room, template, locations] = await Promise.all([
-    prisma.room.findUnique({ where: { id: roomId }, select: { id: true, number: true } }),
-    prisma.checklistTemplate.findFirst({
-      where: { active: true },
-      orderBy: { name: "asc" },
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    select: { id: true, number: true, floor: true },
+  });
+
+  const seleccion = {
+    id: true,
+    name: true,
+    items: {
+      orderBy: { sortOrder: "asc" as const },
       select: {
         id: true,
-        name: true,
-        items: {
-          orderBy: { sortOrder: "asc" },
-          select: {
-            id: true,
-            label: true,
-            kind: true,
-            expectedQty: true,
-            requireNote: true,
-            product: { select: { id: true, name: true, baseUnit: true } },
-          },
-        },
+        label: true,
+        kind: true,
+        expectedQty: true,
+        requireNote: true,
+        product: { select: { id: true, name: true, baseUnit: true } },
       },
-    }),
+    },
+  };
+
+  /**
+   * La plantilla se elige por tipo de alojamiento: una caverna no lleva control
+   * de persianas y una cabaña lleva doble juego de controles. Si no hay una
+   * para su grupo, cae en cualquiera activa antes que dejar a alguien sin nada
+   * que revisar.
+   */
+  const [propia, locations] = await Promise.all([
+    room?.floor
+      ? prisma.checklistTemplate.findFirst({
+          where: { active: true, name: room.floor },
+          select: seleccion,
+        })
+      : null,
     prisma.location.findMany({
-      where: { active: true, kind: "PRINCIPAL" },
+      where: { active: true, kind: "PRINCIPAL", practice: false },
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true },
     }),
   ]);
+
+  const template =
+    propia ??
+    (await prisma.checklistTemplate.findFirst({
+      where: { active: true },
+      orderBy: { name: "asc" },
+      select: seleccion,
+    }));
 
   if (!room) notFound();
 

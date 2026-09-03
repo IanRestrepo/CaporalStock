@@ -53,7 +53,7 @@ export async function closeMinibar(input: unknown): Promise<CloseResult> {
 
     if (restock) {
       const principal = await prisma.location.findFirst({
-        where: { kind: "PRINCIPAL", active: true },
+        where: { kind: "PRINCIPAL", active: true, practice: false },
         select: { id: true },
       });
 

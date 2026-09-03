@@ -33,7 +33,7 @@ export default async function ChecklistAjustesPage() {
       },
     }),
     prisma.product.findMany({
-      where: { active: true },
+      where: { active: true, practice: false },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

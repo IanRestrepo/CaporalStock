@@ -6,7 +6,7 @@ import type { StockItem } from "@/components/stock-explorer";
 /** La bodega central: hay una sola y todo el inventario del hotel vive ahí. */
 export function centralLocation() {
   return prisma.location.findFirst({
-    where: { kind: "PRINCIPAL", active: true },
+    where: { kind: "PRINCIPAL", active: true, practice: false },
     orderBy: { sortOrder: "asc" },
     select: { id: true, name: true },
   });
@@ -22,7 +22,7 @@ export function centralLocation() {
 export async function centralStock(locationId: string, sectionId?: string) {
   const [products, categories, sections] = await Promise.all([
     prisma.product.findMany({
-      where: { active: true, ...(sectionId ? { sectionId } : {}) },
+      where: { active: true, practice: false, ...(sectionId ? { sectionId } : {}) },
       orderBy: { name: "asc" },
       select: {
         id: true,

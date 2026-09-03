@@ -53,6 +53,8 @@ model Location {
   kind     LocationKind
   active   Boolean      @default(true)
   sortOrder Int         @default(0)
+  /// Bodega de práctica del tutorial. Nace al entrar y se borra al salir.
+  practice Boolean      @default(false)
 
   room   Room?   @relation(fields: [roomId], references: [id])
   roomId String? @unique
@@ -132,6 +134,9 @@ model Product {
   /// mínimo global; una ubicación puede sobrescribirlo en Stock.minQty
   minQty      Decimal  @default(0) @db.Decimal(16, 4)
   active      Boolean  @default(true)
+  /// Producto de práctica: existe para que alguien pueda equivocarse sin
+  /// ensuciar el inventario del hotel. Se borra al salir del tutorial.
+  practice    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   category      Category       @relation(fields: [categoryId], references: [id])
@@ -145,6 +150,7 @@ model Product {
 
   @@index([categoryId, active])
   @@index([sectionId, active])
+  @@index([practice])
   @@index([name])
 }
 

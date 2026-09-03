@@ -16,6 +16,7 @@ export type CountProduct = {
   id: string;
   name: string;
   baseUnit: BaseUnit;
+  practice: boolean;
   section: string;
   category: string;
   color: string;
@@ -37,7 +38,7 @@ export function CountSheet({
   products,
   onHand,
 }: {
-  locations: { id: string; name: string; kind: LocationKind }[];
+  locations: { id: string; name: string; kind: LocationKind; practice: boolean }[];
   products: CountProduct[];
   onHand: Record<string, number>;
 }) {
@@ -46,8 +47,13 @@ export function CountSheet({
   const [applying, startApply] = useTransition();
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // La bodega de práctica también es PRINCIPAL: si se colara como opción por
+  // defecto, alguien contaría el estante de mentira creyendo que cuenta el real.
   const [locationId, setLocationId] = useState(
-    locations.find((l) => l.kind === "PRINCIPAL")?.id ?? locations[0]?.id ?? "",
+    locations.find((l) => l.kind === "PRINCIPAL" && !l.practice)?.id ??
+      locations.find((l) => !l.practice)?.id ??
+      locations[0]?.id ??
+      "",
   );
   const [counted, setCounted] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
@@ -55,12 +61,20 @@ export function CountSheet({
 
   const stockOf = (productId: string) => onHand[`${productId}:${locationId}`] ?? 0;
 
+  // El estante de práctica y el del hotel no se mezclan: contando la bodega
+  // real no aparece nada de mentira, y practicando no se ve el catálogo entero.
+  const esPractica = locations.find((l) => l.id === locationId)?.practice ?? false;
+  const delLugar = useMemo(
+    () => products.filter((p) => p.practice === esPractica),
+    [products, esPractica],
+  );
+
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return needle
-      ? products.filter((p) => p.name.toLowerCase().includes(needle))
-      : products;
-  }, [products, query]);
+      ? delLugar.filter((p) => p.name.toLowerCase().includes(needle))
+      : delLugar;
+  }, [delLugar, query]);
 
   /**
    * Dos niveles: el área donde se cuenta y, dentro, el tipo de producto.
@@ -82,12 +96,14 @@ export function CountSheet({
     );
   }, [visible]);
 
+  // Sobre los productos de esta bodega, no sobre el catálogo entero: cambiar de
+  // bodega ya limpia lo escrito, pero el cálculo no tiene por qué depender de eso.
   const ready = useMemo(
     () =>
-      products
+      delLugar
         .map((p) => ({ product: p, value: parseNumber(counted[p.id] ?? "") }))
         .filter((row): row is { product: CountProduct; value: number } => row.value !== null),
-    [products, counted],
+    [delLugar, counted],
   );
 
   const conDiferencia = ready.filter((r) => r.value !== stockOf(r.product.id)).length;
@@ -307,7 +323,7 @@ export function CountSheet({
       <div className="fixed inset-x-0 bottom-0 z-30 px-3 pb-[calc(env(safe-area-inset-bottom)+76px)] lg:left-[76px] lg:pb-4">
         <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-[20px] bg-raised/95 p-2.5 pl-4 shadow-[0_16px_44px_-16px_rgba(0,0,0,0.75)] ring-1 ring-line backdrop-blur-xl lg:max-w-5xl">
           <p className="min-w-0 flex-1 text-[0.8125rem] leading-tight text-soft tnum">
-            <span className="font-semibold text-ink">{ready.length}</span> de {products.length}{" "}
+            <span className="font-semibold text-ink">{ready.length}</span> de {delLugar.length}{" "}
             contados
             {conDiferencia > 0 ? (
               <span className="block text-warn">{conDiferencia} con diferencia</span>

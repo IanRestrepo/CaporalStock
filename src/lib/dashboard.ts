@@ -25,8 +25,8 @@ export async function inventoryValue() {
            COALESCE(SUM(s.quantity * p."costPrice"), 0)::text AS value
       FROM "Location" l
       LEFT JOIN "Stock"   s ON s."locationId" = l.id
-      LEFT JOIN "Product" p ON p.id = s."productId" AND p.active
-     WHERE l.active
+      LEFT JOIN "Product" p ON p.id = s."productId" AND p.active AND NOT p.practice
+     WHERE l.active AND NOT l.practice
      GROUP BY l.id, l.name, l.kind
      ORDER BY 4 DESC
   `;

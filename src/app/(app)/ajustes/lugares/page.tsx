@@ -10,7 +10,7 @@ export default async function LugaresPage() {
 
   const [central, rooms] = await Promise.all([
     prisma.location.findFirst({
-      where: { kind: "PRINCIPAL", active: true },
+      where: { kind: "PRINCIPAL", active: true, practice: false },
       orderBy: { sortOrder: "asc" },
       select: { id: true, name: true, _count: { select: { stock: true } } },
     }),

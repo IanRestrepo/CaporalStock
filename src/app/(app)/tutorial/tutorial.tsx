@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { marcarPaso, olvidarPaso } from "@/components/tutorial-return";
+import { borrarPractica, iniciarPractica } from "./actions";
 import { stepsFor } from "./steps";
 
 /**
@@ -48,8 +49,21 @@ export function Tutorial({
     [total],
   );
 
+  // La práctica nace al abrir el tutorial.
+  useEffect(() => {
+    void iniciarPractica();
+  }, []);
+
+  // El marcador se pone al entrar, no sólo al ir a practicar: es lo que hace
+  // que irse por el menú, sin haber tocado ningún botón de práctica, también
+  // se lleve la bodega. Si sólo se pusiera en el enlace, quedaría huérfana.
+  useEffect(() => {
+    marcarPaso(index + 1);
+  }, [index]);
+
   const salir = useCallback(() => {
     olvidarPaso();
+    void borrarPractica();
     router.push("/ajustes");
   }, [router]);
 
