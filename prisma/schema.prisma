@@ -316,6 +316,23 @@ model Purchase {
   @@index([issuedAt])
 }
 
+/**
+ * La factura escaneada.
+ *
+ * Vive en la base y no en disco porque en un hosting serverless el disco es de
+ * solo lectura y se borra entre invocaciones: el archivo que subiste no estaría
+ * ahí cuando alguien fuera a abrirlo. Tabla aparte para que los bytes no viajen
+ * en cada consulta de compras.
+ */
+model InvoiceFile {
+  id        String   @id @default(cuid())
+  name      String
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
 model PurchaseItem {
   id             String  @id @default(cuid())
   purchaseId     String

@@ -1,20 +1,25 @@
 import "server-only";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
+import { prisma } from "@/lib/prisma";
 
 /**
  * Almacenamiento de facturas.
  *
- * En local escribe a ./uploads (fuera de /public, para que nadie llegue al PDF
- * adivinando la URL: se sirve por /api/facturas con sesión válida).
+ * El archivo vive en la base, no en disco. En un hosting serverless el disco es
+ * de solo lectura y además se borra entre invocaciones: escribir ahí falla, y
+ * si no fallara el archivo no estaría cuando alguien fuera a abrirlo.
  *
- * En un hosting serverless el disco es efímero — ahí hay que enchufar un blob
- * store. El único punto a cambiar es esta función.
+ * Se sirve por /api/facturas, que exige sesión de administrador — nadie llega
+ * al PDF adivinando la URL.
  */
 
-const ROOT = path.join(process.cwd(), "uploads");
-const MAX_BYTES = 8 * 1024 * 1024;
+/**
+ * Tope del archivo.
+ *
+ * No es un capricho: el cuerpo de una petición a una función serverless está
+ * limitado a unos 4,5 MB, así que un archivo más grande no llegaría a
+ * guardarse. Mejor decirlo antes de subir que fallar después.
+ */
+const MAX_BYTES = 4 * 1024 * 1024;
 
 const ALLOWED = new Map([
   ["application/pdf", "pdf"],
@@ -27,24 +32,29 @@ const ALLOWED = new Map([
 export type StoredFile = { url: string; name: string };
 
 export async function storeInvoice(file: File): Promise<StoredFile> {
-  const extension = ALLOWED.get(file.type);
-  if (!extension) {
+  if (!ALLOWED.has(file.type)) {
     throw new Error("La factura debe ser un PDF o una foto (JPG, PNG, WEBP).");
   }
   if (file.size > MAX_BYTES) {
-    throw new Error("El archivo supera los 8 MB.");
+    throw new Error("El archivo supera los 4 MB.");
   }
 
-  const key = `${randomUUID()}.${extension}`;
-  const folder = path.join(ROOT, "facturas");
-  await mkdir(folder, { recursive: true });
-  await writeFile(path.join(folder, key), Buffer.from(await file.arrayBuffer()));
+  const stored = await prisma.invoiceFile.create({
+    data: {
+      name: file.name,
+      mimeType: file.type,
+      size: file.size,
+      data: Buffer.from(await file.arrayBuffer()),
+    },
+    select: { id: true },
+  });
 
-  return { url: `/api/facturas/${key}`, name: file.name };
+  return { url: `/api/facturas/${stored.id}`, name: file.name };
 }
 
-export function invoicePath(key: string) {
-  // Sin separadores: el nombre viene de la URL y no debe poder salir de la carpeta.
-  if (key.includes("/") || key.includes("\\") || key.includes("..")) return null;
-  return path.join(ROOT, "facturas", key);
+export async function readInvoice(id: string) {
+  return prisma.invoiceFile.findUnique({
+    where: { id },
+    select: { data: true, mimeType: true, name: true },
+  });
 }

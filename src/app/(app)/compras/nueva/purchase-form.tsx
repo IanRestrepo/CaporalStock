@@ -369,7 +369,7 @@ export function PurchaseForm({
             {attachment ? attachment.name : "Adjuntar la factura"}
           </span>
           <span className="block text-[0.8125rem] opacity-70">
-            {attachment ? "Toca para cambiarla" : "PDF o foto, hasta 8 MB"}
+            {attachment ? "Toca para cambiarla" : "PDF o foto, hasta 4 MB"}
           </span>
         </span>
       </button>

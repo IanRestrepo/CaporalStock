@@ -1,15 +1,6 @@
-import { readFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { invoicePath } from "@/lib/storage";
+import { readInvoice } from "@/lib/storage";
 import { getSessionUser } from "@/lib/session";
-
-const TYPES: Record<string, string> = {
-  pdf: "application/pdf",
-  jpg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  heic: "image/heic",
-};
 
 /** Las facturas sólo las ve un administrador con sesión abierta. */
 export async function GET(
@@ -24,19 +15,15 @@ export async function GET(
   const { path: segments } = await params;
   if (segments.length !== 1) return new NextResponse("No encontrado", { status: 404 });
 
-  const file = invoicePath(segments[0]);
+  const file = await readInvoice(segments[0]);
   if (!file) return new NextResponse("No encontrado", { status: 404 });
 
-  try {
-    const data = await readFile(file);
-    const extension = segments[0].split(".").pop() ?? "";
-    return new NextResponse(new Uint8Array(data), {
-      headers: {
-        "Content-Type": TYPES[extension] ?? "application/octet-stream",
-        "Cache-Control": "private, max-age=3600",
-      },
-    });
-  } catch {
-    return new NextResponse("No encontrado", { status: 404 });
-  }
+  return new NextResponse(new Uint8Array(file.data), {
+    headers: {
+      "Content-Type": file.mimeType,
+      // Se abre en el navegador; el nombre original sirve si la descargan.
+      "Content-Disposition": `inline; filename="${encodeURIComponent(file.name)}"`,
+      "Cache-Control": "private, max-age=3600",
+    },
+  });
 }
