@@ -5,6 +5,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 import { pedirReporte } from "@/app/(app)/reportes/agente/actions";
 import { ArrowUp, MessageSquarePlus, Printer, Sparkles, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 type Turno = { pregunta: string; respuesta: string; herramientas: string[] };
@@ -24,6 +25,7 @@ const SUGERENCIAS = [
  * a alguien a otra pantalla es perder el hilo de lo que estaba haciendo.
  */
 export function AgentePanel({ hayClave }: { hayClave: boolean }) {
+  const router = useRouter();
   const toast = useToast();
   const [pending, startTransition] = useTransition();
   const [abierto, setAbierto] = useState(false);
@@ -78,6 +80,11 @@ export function AgentePanel({ hayClave }: { hayClave: boolean }) {
         ...c,
         { pregunta: limpia, respuesta: r.markdown, herramientas: r.herramientas },
       ]);
+
+      // Si el agente tocó el catálogo, la pantalla de atrás quedó vieja.
+      if (r.herramientas.some((h) => h.startsWith("crear_") || h.startsWith("eliminar_"))) {
+        router.refresh();
+      }
     });
   };
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { borrarProducto, guardarProducto, type DatosProducto } from "@/lib/productos";
 import { actor } from "@/lib/session";
 
 const productSchema = z.object({
@@ -14,7 +15,7 @@ const productSchema = z.object({
     .nullable()
     .optional()
     .transform((value) => value || null),
-  baseUnit: z.enum(["GRAMO", "MILILITRO", "UNIDAD"]),
+  baseUnit: z.enum(["GRAMO", "KILO", "MILILITRO", "LITRO", "UNIDAD"]),
   costPrice: z.number().min(0),
   salePrice: z.number().min(0),
   minQty: z.number().min(0),
@@ -33,13 +34,8 @@ export async function saveProduct(input: unknown): Promise<SaveResult> {
   const { user, error } = await actor("ADMIN");
   if (!user) return { ok: false, error };
 
-  const { id, ...data } = parsed.data;
-
   try {
-    const product = id
-      ? await prisma.product.update({ where: { id }, data })
-      : await prisma.product.create({ data });
-
+    const product = await guardarProducto(parsed.data as DatosProducto);
     revalidatePath("/", "layout");
     return { ok: true, id: product.id };
   } catch (err) {
@@ -122,25 +118,9 @@ export async function deleteProduct(id: string): Promise<DeleteResult> {
   if (!user) return { ok: false, error };
 
   try {
-    const [lines, purchases, checklists, stock] = await Promise.all([
-      prisma.movementLine.count({ where: { productId: id } }),
-      prisma.purchaseItem.count({ where: { productId: id } }),
-      prisma.checklistTemplateItem.count({ where: { productId: id } }),
-      prisma.stock.aggregate({ where: { productId: id }, _sum: { quantity: true } }),
-    ]);
-
-    const hasHistory = lines > 0 || purchases > 0 || checklists > 0;
-    const remaining = Number(stock._sum.quantity ?? 0);
-
-    if (hasHistory || remaining !== 0) {
-      await prisma.product.update({ where: { id }, data: { active: false } });
-      revalidatePath("/", "layout");
-      return { ok: true, archived: true };
-    }
-
-    await prisma.product.delete({ where: { id } });
+    const { archivado } = await borrarProducto(id);
     revalidatePath("/", "layout");
-    return { ok: true, archived: false };
+    return { ok: true, archived: archivado };
   } catch (err) {
     console.error(err);
     return { ok: false, error: "No se pudo borrar el producto." };

@@ -7,6 +7,7 @@ import {
 } from "@/lib/dashboard";
 import { getExpiring, getLowStock } from "@/lib/alerts";
 import { NOMBRES, TIPOS, type Tipo } from "@/lib/reportes/catalogo";
+import { borrarProducto, guardarProducto } from "@/lib/productos";
 import { num } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { formatQty } from "@/lib/units";
@@ -279,6 +280,165 @@ const generarPdf: Herramienta = {
   },
 };
 
+/**
+ * Las dos que escriben.
+ *
+ * Todo lo demás en este archivo lee. Estas cambian el catálogo del hotel a
+ * partir de una frase, que es un salto de confianza distinto: una lectura mal
+ * entendida devuelve un número raro y se nota, pero un borrado mal entendido se
+ * lleva un producto y nadie se entera hasta que lo busca.
+ *
+ * Por eso van sobre las mismas acciones que usa la interfaz —con su control de
+ * administrador y su regla de archivar en vez de borrar cuando hay historial— y
+ * por eso ninguna adivina: si el nombre no señala a un solo producto, no tocan
+ * nada y devuelven la lista para que la persona elija.
+ */
+const crearProducto: Herramienta = {
+  nombre: "crear_producto",
+  descripcion:
+    "Da de alta un producto en el catálogo. Usalo cuando pidan 'agregá', 'creá' o 'añadí' un producto. Pedí la unidad de medida si no la dijeron: no se puede cambiar después.",
+  parametros: objeto(
+    {
+      nombre: texto("Nombre del producto, como va a aparecer en la lista."),
+      subcategoria: texto("Qué es: Bebidas, Licores, Lencería… Si no existe, se devuelven las que hay."),
+      categoria: texto("Dónde se usa: Bar, Cocina, Lavandería… Opcional."),
+      unidad: texto("GRAMO, KILO, MILILITRO, LITRO o UNIDAD. Por defecto UNIDAD."),
+      precioCosto: entero("Lo que cuesta comprarlo, por unidad de medida. Opcional."),
+      precioVenta: entero("Lo que se le cobra al huésped. Cero o vacío si no se vende."),
+      minimo: entero("Stock mínimo: por debajo de esto el sistema avisa. Opcional."),
+      controlaVencimiento: texto("'si' si hay que llevarle fecha de vencimiento."),
+    },
+    ["nombre", "subcategoria"],
+  ),
+  correr: async (input) => {
+    const nombre = String(input.nombre ?? "").trim();
+    if (nombre.length < 2) return JSON.stringify({ error: "Falta el nombre del producto." });
+
+    const [subcategorias, categorias] = await Promise.all([
+      prisma.category.findMany({ select: { id: true, name: true }, orderBy: { sortOrder: "asc" } }),
+      prisma.section.findMany({
+        where: { active: true },
+        select: { id: true, name: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+    ]);
+
+    const buscar = (lista: { id: string; name: string }[], texto: unknown) => {
+      const q = String(texto ?? "").trim().toLowerCase();
+      if (!q) return null;
+      return (
+        lista.find((x) => x.name.toLowerCase() === q) ??
+        lista.find((x) => x.name.toLowerCase().includes(q)) ??
+        null
+      );
+    };
+
+    const sub = buscar(subcategorias, input.subcategoria);
+    if (!sub) {
+      return JSON.stringify({
+        error: `No existe la subcategoría "${input.subcategoria}".`,
+        disponibles: subcategorias.map((c) => c.name),
+      });
+    }
+
+    const yaEsta = await prisma.product.findFirst({
+      where: { name: { equals: nombre, mode: "insensitive" }, practice: false },
+      select: { name: true, active: true },
+    });
+    if (yaEsta) {
+      return JSON.stringify({
+        error: `Ya existe "${yaEsta.name}"${yaEsta.active ? "" : " (archivado)"}. No se creó nada.`,
+      });
+    }
+
+    const unidad = String(input.unidad ?? "UNIDAD").toUpperCase();
+    const unidades = ["GRAMO", "KILO", "MILILITRO", "LITRO", "UNIDAD"];
+    if (!unidades.includes(unidad)) {
+      return JSON.stringify({ error: `Unidad desconocida "${unidad}".`, unidades });
+    }
+
+    try {
+      await guardarProducto({
+        name: nombre,
+        categoryId: sub.id,
+        sectionId: buscar(categorias, input.categoria)?.id ?? null,
+        baseUnit: unidad as never,
+        costPrice: Number(input.precioCosto ?? 0) || 0,
+        salePrice: Number(input.precioVenta ?? 0) || 0,
+        minQty: Number(input.minimo ?? 0) || 0,
+        perishable: String(input.controlaVencimiento ?? "").toLowerCase().startsWith("s"),
+        active: true,
+      });
+    } catch (err) {
+      console.error(err);
+      return JSON.stringify({ error: "No se pudo crear el producto." });
+    }
+
+    return JSON.stringify({
+      creado: true,
+      nombre,
+      subcategoria: sub.name,
+      categoria: buscar(categorias, input.categoria)?.name ?? "sin asignar",
+      unidad,
+      aviso: "Nace con existencia en cero: el saldo entra por una compra o un conteo.",
+    });
+  },
+};
+
+const eliminarProducto: Herramienta = {
+  nombre: "eliminar_producto",
+  descripcion:
+    "Da de baja un producto del catálogo. Usalo cuando pidan 'borrá', 'eliminá' o 'quitá' un producto. Si el nombre no señala a uno solo, no borra nada y devuelve los que coinciden.",
+  parametros: objeto(
+    { nombre: texto("Nombre del producto a dar de baja, lo más completo posible.") },
+    ["nombre"],
+  ),
+  correr: async (input) => {
+    const busqueda = String(input.nombre ?? "").trim();
+    if (busqueda.length < 2) return JSON.stringify({ error: "Falta el nombre del producto." });
+
+    const candidatos = await prisma.product.findMany({
+      where: { active: true, practice: false, name: { contains: busqueda, mode: "insensitive" } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+      take: 20,
+    });
+
+    if (!candidatos.length) {
+      return JSON.stringify({ error: `No hay ningún producto activo que se llame "${busqueda}".` });
+    }
+
+    // Un nombre exacto gana sobre los parecidos: "Agua 300 ml" no debería
+    // quedar bloqueada porque además exista "Agua 300 ml sin gas".
+    const exacto = candidatos.find((c) => c.name.toLowerCase() === busqueda.toLowerCase());
+    const elegido = exacto ?? (candidatos.length === 1 ? candidatos[0] : null);
+
+    if (!elegido) {
+      return JSON.stringify({
+        error: `"${busqueda}" coincide con ${candidatos.length} productos. No se borró nada.`,
+        coincidencias: candidatos.map((c) => c.name),
+        instruccion: "Preguntale a la persona cuál de estos quiere dar de baja, con el nombre completo.",
+      });
+    }
+
+    let archivado: boolean;
+    try {
+      ({ archivado } = await borrarProducto(elegido.id));
+    } catch (err) {
+      console.error(err);
+      return JSON.stringify({ error: "No se pudo dar de baja el producto." });
+    }
+
+    return JSON.stringify({
+      nombre: elegido.name,
+      archivado,
+      detalle: archivado
+        ? "Tenía movimientos o saldo, así que se archivó en vez de borrarse: desaparece de las listas pero el historial queda intacto."
+        : "Nunca se movió y estaba en cero, así que se borró del todo.",
+    });
+  },
+};
+
 export const HERRAMIENTAS: Herramienta[] = [
   consumoDelPeriodo,
   consumoPorSuite,
@@ -287,4 +447,6 @@ export const HERRAMIENTAS: Herramienta[] = [
   catalogoYExistencias,
   ultimosMovimientos,
   generarPdf,
+  crearProducto,
+  eliminarProducto,
 ];
