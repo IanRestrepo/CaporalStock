@@ -76,6 +76,17 @@ export type Reporte =
   | { ok: true; markdown: string; herramientas: string[] }
   | { ok: false; error: string };
 
+/** Lo ya hablado, para que "¿y en julio?" signifique algo. */
+export type Turno = { pregunta: string; respuesta: string };
+
+/**
+ * Cuántos intercambios anteriores se le recuerdan.
+ *
+ * Los reportes son largos; arrastrarlos todos cuesta tokens y confunde más de
+ * lo que ayuda. Con los últimos tres alcanza para encadenar preguntas.
+ */
+const MEMORIA = 3;
+
 export function hayClave() {
   return Boolean(process.env.GEMINI_API_KEY);
 }
@@ -86,7 +97,10 @@ const declaraciones = HERRAMIENTAS.map((h: Herramienta) => ({
   parameters: h.parametros,
 }));
 
-export async function generarReporte(pregunta: string): Promise<Reporte> {
+export async function generarReporte(
+  pregunta: string,
+  previas: Turno[] = [],
+): Promise<Reporte> {
   if (!hayClave()) {
     return {
       ok: false,
@@ -103,9 +117,14 @@ export async function generarReporte(pregunta: string): Promise<Reporte> {
     day: "numeric",
   });
 
-  const historia: Content[] = [
-    { role: "user", parts: [{ text: `Hoy es ${hoy}.\n\n${pregunta}` }] },
-  ];
+  const historia: Content[] = [];
+
+  for (const turno of previas.slice(-MEMORIA)) {
+    historia.push({ role: "user", parts: [{ text: turno.pregunta }] });
+    historia.push({ role: "model", parts: [{ text: turno.respuesta }] });
+  }
+
+  historia.push({ role: "user", parts: [{ text: `Hoy es ${hoy}.\n\n${pregunta}` }] });
   const usadas: string[] = [];
 
   try {

@@ -247,6 +247,15 @@
     display: none !important;
   }
 
+  /* Con una hoja del agente en el DOM, sale sólo ella: la pantalla que quedó
+     abajo no tiene por qué aparecer en el papel. */
+  body:has([data-hoja]) main {
+    display: none !important;
+  }
+  [data-hoja] {
+    position: static !important;
+  }
+
   main {
     padding: 0 !important;
   }
