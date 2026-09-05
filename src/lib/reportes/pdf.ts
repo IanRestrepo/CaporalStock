@@ -132,10 +132,13 @@ function posiciones(columnas: Documento["columnas"]) {
 
 function cabeceraDeTabla(page: PDFPage, t: Tipos, cols: ReturnType<typeof posiciones>, y: number) {
   for (const { columna, x, ancho } of cols) {
+    // El título también se recorta: uno más ancho que su columna se desborda
+    // sobre la de al lado y las dos quedan ilegibles.
+    const titulo = recortar(columna.titulo.toUpperCase(), t.fuerte, 8, ancho - 6);
     if (columna.alinear === "derecha") {
-      aLaDerecha(page, columna.titulo.toUpperCase(), x + ancho, y, t.fuerte, 8, SUAVE);
+      aLaDerecha(page, titulo, x + ancho, y, t.fuerte, 8, SUAVE);
     } else {
-      escribir(page, columna.titulo.toUpperCase(), x, y, t.fuerte, 8, SUAVE);
+      escribir(page, titulo, x, y, t.fuerte, 8, SUAVE);
     }
   }
   raya(page, y - 8, LINEA);
