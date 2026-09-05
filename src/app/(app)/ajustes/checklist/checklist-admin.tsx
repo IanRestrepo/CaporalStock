@@ -6,6 +6,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/product-form";
 import { useToast } from "@/components/ui/toast";
+import { cn } from "@/lib/cn";
 import { parseNumber } from "@/lib/units";
 import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -35,10 +36,12 @@ type Draft = {
 
 export function ChecklistAdmin({
   templateId,
+  templates,
   items,
   products,
 }: {
   templateId: string;
+  templates: { id: string; name: string }[];
   items: Item[];
   products: { id: string; name: string }[];
 }) {
@@ -84,6 +87,26 @@ export function ChecklistAdmin({
 
   return (
     <>
+      {/* Hay una plantilla por tipo de alojamiento: sin poder cambiar de una a
+          otra, tres de las cuatro quedan invisibles y nadie puede corregirlas. */}
+      {templates.length > 1 ? (
+        <div data-scroll-x className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
+          {templates.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => router.push(`/ajustes/checklist?plantilla=${t.id}`)}
+              className={cn(
+                "press shrink-0 rounded-full px-3.5 py-2 text-[0.8125rem] font-medium whitespace-nowrap transition-colors",
+                t.id === templateId ? "bg-ink text-canvas" : "bg-raised text-soft hover:text-ink",
+              )}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       <div className="mb-4 flex justify-end">
         <Button
           variant="accent"

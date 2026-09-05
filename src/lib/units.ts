@@ -82,7 +82,9 @@ export function formatQty(
   if (!exact && unit === "MILILITRO" && abs >= 1000) {
     return join(decimal(qtyBase / 1000, 2), "L", bare);
   }
-  return join(decimal(qtyBase, unit === "UNIDAD" ? 2 : 1), UNITS[unit].symbol, bare);
+  // Cada unidad declara sus decimales: media botella es 0,5 L y hay que verlo,
+  // pero "2,00 cervezas" no significa nada.
+  return join(decimal(qtyBase, UNITS[unit].decimals), UNITS[unit].symbol, bare);
 }
 
 function join(value: string, symbol: string, bare: boolean) {

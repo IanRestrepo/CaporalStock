@@ -9,11 +9,16 @@ import { ChecklistAdmin, type Item } from "./checklist-admin";
 
 export const metadata = { title: "Checklist de suite" };
 
-export default async function ChecklistAjustesPage() {
+export default async function ChecklistAjustesPage({
+  searchParams,
+}: PageProps<"/ajustes/checklist">) {
   await requireAdminPage();
 
-  const [template, products] = await Promise.all([
-    prisma.checklistTemplate.findFirst({
+  const params = await searchParams;
+  const pedida = typeof params.plantilla === "string" ? params.plantilla : null;
+
+  const [templates, products] = await Promise.all([
+    prisma.checklistTemplate.findMany({
       where: { active: true },
       orderBy: { name: "asc" },
       select: {
@@ -38,6 +43,10 @@ export default async function ChecklistAjustesPage() {
       select: { id: true, name: true },
     }),
   ]);
+
+  // Hay una plantilla por tipo de alojamiento. Sin poder cambiar de una a otra,
+  // tres de las cuatro quedan invisibles y nadie puede corregirlas.
+  const template = templates.find((t) => t.id === pedida) ?? templates[0] ?? null;
 
   if (!template) {
     return (
@@ -70,9 +79,14 @@ export default async function ChecklistAjustesPage() {
         back={{ href: "/ajustes" }}
         eyebrow={template.name}
         title="Checklist de suite"
-        subtitle="Vos decidís qué debe haber en cada habitación."
+        subtitle="Vos decidís qué debe haber en cada tipo de alojamiento."
       />
-      <ChecklistAdmin templateId={template.id} items={items} products={products} />
+      <ChecklistAdmin
+        templateId={template.id}
+        templates={templates.map((t) => ({ id: t.id, name: t.name }))}
+        items={items}
+        products={products}
+      />
     </Screen>
   );
 }
