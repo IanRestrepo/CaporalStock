@@ -63,6 +63,14 @@ type Seed = {
   min: number;
   /** Cuántos deben quedar en cada minibar después de reponer. */
   par?: number;
+  /**
+   * Lo que se le cobra al huésped.
+   *
+   * Sólo lo que se vende lo lleva. Una toalla o un control se controlan pero no
+   * se facturan, y ponerles precio inflaría el consumo del mes con plata que
+   * nadie cobró.
+   */
+  venta?: number;
   vence?: boolean;
 };
 
@@ -74,14 +82,14 @@ type Seed = {
  * pueda verificar mirando el estante.
  */
 const MINIBAR: Seed[] = [
-  { name: "Agua 300 ml", category: "Aguas y gaseosas", section: "Bar", unit: "UNIDAD", min: 24, par: 2 },
-  { name: "Coronita 210 ml", category: "Cervezas", section: "Bar", unit: "UNIDAD", min: 24, par: 2 },
-  { name: "Coca-Cola Original 269 ml", category: "Aguas y gaseosas", section: "Bar", unit: "UNIDAD", min: 12, par: 1 },
-  { name: "Coca-Cola Zero 269 ml", category: "Aguas y gaseosas", section: "Bar", unit: "UNIDAD", min: 12, par: 1 },
-  { name: "JP 250 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1 },
-  { name: "Smirnoff 250 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1 },
-  { name: "Aguardiente Amarillo media 375 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1 },
-  { name: "Ron Viejo de Caldas media 375 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1 },
+  { name: "Agua 300 ml", category: "Aguas y gaseosas", section: "Bar", unit: "UNIDAD", min: 24, par: 2, venta: 6000 },
+  { name: "Coronita 210 ml", category: "Cervezas", section: "Bar", unit: "UNIDAD", min: 24, par: 2, venta: 9000 },
+  { name: "Coca-Cola Original 269 ml", category: "Aguas y gaseosas", section: "Bar", unit: "UNIDAD", min: 12, par: 1, venta: 6000 },
+  { name: "Coca-Cola Zero 269 ml", category: "Aguas y gaseosas", section: "Bar", unit: "UNIDAD", min: 12, par: 1, venta: 6000 },
+  { name: "JP 250 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1, venta: 12000 },
+  { name: "Smirnoff 250 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1, venta: 14000 },
+  { name: "Aguardiente Amarillo media 375 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1, venta: 35000 },
+  { name: "Ron Viejo de Caldas media 375 ml", category: "Licores", section: "Bar", unit: "UNIDAD", min: 12, par: 1, venta: 38000 },
 ];
 
 /** Lo que se revisa en la suite y descuenta stock al reponerlo. */
@@ -224,6 +232,7 @@ async function main() {
         categoryId: categories.get(seed.category)!,
         sectionId: sections.get(seed.section)!,
         baseUnit: seed.unit,
+        salePrice: seed.venta ?? 0,
         minQty: seed.min,
         perishable: seed.vence ?? false,
         presentations: { create: [{ name: "Unidad", factor: 1, isDefaultConsume: true }] },
@@ -280,7 +289,9 @@ async function main() {
 
   const total = MINIBAR.length + CONSUMIBLES.length + DOTACION.length;
   console.log("\n✓ Listo. Entrá con  admin / 2468");
-  console.log(`  ${total} productos · ${ROOMS.length} alojamientos con su minibar al par`);
+  const seVenden = MINIBAR.filter((s) => s.venta).length;
+  console.log(`  ${total} productos · ${seVenden} con precio de venta, el resto sólo stock`);
+  console.log(`  ${ROOMS.length} alojamientos con su minibar al par`);
   console.log(`  ${TIPOS.length} checklists: ${TIPOS.map((t) => t.grupo).join(", ")}`);
   console.log(`  La bodega ${central.name} arranca en cero: el saldo lo levanta el conteo.`);
 }
