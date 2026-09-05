@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, SectionLabel } from "@/components/ui/card";
 import { LevelBar } from "@/components/level-row";
 import { PageHeader, Screen } from "@/components/screen";
@@ -59,7 +61,17 @@ export default async function ReportesPage({ searchParams }: PageProps<"/reporte
 
   return (
     <Screen>
-      <PageHeader title="Reportes" subtitle="Lo que entró, lo que salió y lo que quedó." />
+      <PageHeader
+        title="Reportes"
+        subtitle="Lo que entró, lo que salió y lo que quedó."
+        action={
+          <Button asChild variant="quiet" size="icon" aria-label="Pedir un reporte">
+            <Link href="/reportes/agente">
+              <Sparkles className="size-5" />
+            </Link>
+          </Button>
+        }
+      />
 
       <div data-scroll-x className="-mx-4 mb-5 flex gap-1.5 overflow-x-auto px-4 pb-0.5">
         {PERIODS.map((option) => (

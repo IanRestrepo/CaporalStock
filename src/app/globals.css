@@ -217,3 +217,52 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ────────────────────────────  Impresión  ────────────────────────────
+   Un reporte impreso es papel: fondo blanco, tinta negra y nada de la
+   interfaz alrededor. Sin esto la hoja sale con el fondo oscuro y la
+   barra de navegación en el medio. */
+@media print {
+  :root {
+    --canvas: white;
+    --surface: white;
+    --surface-raised: white;
+    --text: black;
+    --text-soft: #1a1a1a;
+    --text-faint: #555;
+    --line: #ddd;
+    --line-strong: #bbb;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* La barra flotante, el riel y todo lo que sirve para navegar. */
+  nav,
+  [data-rail],
+  .pb-safe {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  /* Que una tabla no se parta a la mitad entre dos hojas. */
+  table {
+    break-inside: auto;
+  }
+  tr {
+    break-inside: avoid;
+  }
+  thead {
+    display: table-header-group;
+  }
+
+  @page {
+    margin: 18mm 14mm;
+  }
+}
