@@ -1,6 +1,6 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
-import { HERRAMIENTAS } from "@/lib/reportes/herramientas";
+import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import { HERRAMIENTAS, type Herramienta } from "@/lib/reportes/herramientas";
 
 /**
  * El agente de reportes.
@@ -9,7 +9,46 @@ import { HERRAMIENTAS } from "@/lib/reportes/herramientas";
  * y redacta el resultado. Las cifras salen de la base: acá sólo se acomodan.
  */
 
-const MODELO = "claude-opus-5";
+/**
+ * El modelo.
+ *
+ * Alcanza de sobra: el trabajo es elegir cuál de seis consultas correr y
+ * redactar un párrafo. Elegido midiendo, no por ser el más nuevo: al probarlo,
+ * `3.8-flash` devolvía 503 por saturación y `flash-latest` fallaba una de cada
+ * dos, mientras que éste respondió siempre en unos tres segundos. Si algún día
+ * devuelve 404, `ai.models.list()` dice cuáles hay.
+ */
+const MODELO = "gemini-3.5-flash";
+
+/** Cuántas veces puede pedir datos antes de escribir. Seis herramientas, margen para encadenar. */
+const MAX_VUELTAS = 8;
+
+/**
+ * El plan gratuito se cae solo.
+ *
+ * No es la clave ni la petición: el modelo se satura y devuelve 503, y a veces
+ * un 403 que también es pasajero. Reintentar dos veces con espera convierte la
+ * mayoría de esos fallos en un reporte, en vez de un error que no explica nada.
+ */
+const TRANSITORIOS = new Set([403, 429, 500, 502, 503, 504]);
+const REINTENTOS = 3;
+
+async function conReintentos<T>(hacer: () => Promise<T>): Promise<T> {
+  let ultimo: unknown;
+  for (let intento = 0; intento < REINTENTOS; intento++) {
+    try {
+      return await hacer();
+    } catch (err) {
+      ultimo = err;
+      const status = (err as { status?: number })?.status;
+      if (!status || !TRANSITORIOS.has(status)) throw err;
+      if (intento < REINTENTOS - 1) {
+        await new Promise((r) => setTimeout(r, 1500 * (intento + 1)));
+      }
+    }
+  }
+  throw ultimo;
+}
 
 const INSTRUCCIONES = `Sos el analista de Caporal, el sistema de inventario de un hotel pequeño en Colombia.
 
@@ -19,6 +58,7 @@ Reglas que no se negocian:
 
 - Toda cifra tiene que venir de una herramienta. Nunca calcules, estimes ni completes un número de memoria. Si te falta un dato, corré otra herramienta o decí que no lo tenés.
 - Si la pregunta no se puede responder con las herramientas, decilo en una línea y explicá qué haría falta. No inventes un reporte plausible.
+- No inventes nombres de personas, proveedores, marcas ni lugares. No te dirijas a nadie por su nombre y no abras con un saludo: no sabés quién va a leer esto.
 - Las fechas relativas ("este mes", "agosto", "la semana pasada") las resolvés contra la fecha de hoy, que viene en el mensaje. El rango va de la fecha inicial inclusive a la final exclusiva.
 - La plata es en pesos colombianos. Escribila como $ 1.234.567, sin decimales.
 - Las cantidades vienen ya formateadas por las herramientas: copialas tal cual.
@@ -36,17 +76,26 @@ export type Reporte =
   | { ok: true; markdown: string; herramientas: string[] }
   | { ok: false; error: string };
 
+export function hayClave() {
+  return Boolean(process.env.GEMINI_API_KEY);
+}
+
+const declaraciones = HERRAMIENTAS.map((h: Herramienta) => ({
+  name: h.nombre,
+  description: h.descripcion,
+  parameters: h.parametros,
+}));
+
 export async function generarReporte(pregunta: string): Promise<Reporte> {
-  // El SDK también acepta ANTHROPIC_AUTH_TOKEN; en Vercel se usa la clave.
-  if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+  if (!hayClave()) {
     return {
       ok: false,
       error:
-        "Falta la clave de la API. Agregá ANTHROPIC_API_KEY en las variables de entorno para poder pedir reportes.",
+        "Falta la clave de la API. Agregá GEMINI_API_KEY en las variables de entorno para poder pedir reportes.",
     };
   }
 
-  const client = new Anthropic();
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const hoy = new Date().toLocaleDateString("es-CO", {
     weekday: "long",
     year: "numeric",
@@ -54,58 +103,88 @@ export async function generarReporte(pregunta: string): Promise<Reporte> {
     day: "numeric",
   });
 
+  const historia: Content[] = [
+    { role: "user", parts: [{ text: `Hoy es ${hoy}.\n\n${pregunta}` }] },
+  ];
   const usadas: string[] = [];
 
   try {
-    const runner = client.beta.messages.toolRunner({
-      model: MODELO,
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      system: INSTRUCCIONES,
-      tools: HERRAMIENTAS,
-      messages: [
-        {
-          role: "user",
-          content: `Hoy es ${hoy}.\n\n${pregunta}`,
-        },
-      ],
-    });
+    for (let vuelta = 0; vuelta < MAX_VUELTAS; vuelta++) {
+      const respuesta = await conReintentos(() =>
+        ai.models.generateContent({
+          model: MODELO,
+          contents: historia,
+          config: {
+            systemInstruction: INSTRUCCIONES,
+            tools: [{ functionDeclarations: declaraciones }],
+          },
+        }),
+      );
 
-    // Cada vuelta es un mensaje completo: se anota qué consultó para poder
-    // mostrar de dónde salieron las cifras.
-    for await (const mensaje of runner) {
-      for (const bloque of mensaje.content) {
-        if (bloque.type === "tool_use") usadas.push(bloque.name);
+      const llamadas = respuesta.functionCalls ?? [];
+
+      if (!llamadas.length) {
+        const markdown = (respuesta.text ?? "").trim();
+        if (!markdown) {
+          return { ok: false, error: "El reporte volvió vacío. Probá con otra pregunta." };
+        }
+        return { ok: true, markdown, herramientas: [...new Set(usadas)] };
       }
+
+      // Lo que el modelo pidió se guarda tal cual: sin su propio turno en la
+      // historia, la vuelta siguiente no sabe qué preguntó.
+      historia.push({ role: "model", parts: respuesta.candidates?.[0]?.content?.parts ?? [] });
+
+      const resultados: Part[] = [];
+      for (const llamada of llamadas) {
+        const herramienta = HERRAMIENTAS.find((h) => h.nombre === llamada.name);
+        usadas.push(llamada.name ?? "?");
+
+        // Un error de una consulta vuelve como resultado, no como excepción: el
+        // modelo puede corregir el rango y reintentar en vez de tumbar el reporte.
+        let salida: string;
+        try {
+          salida = herramienta
+            ? await herramienta.correr((llamada.args ?? {}) as Record<string, never>)
+            : JSON.stringify({ error: `No existe la herramienta ${llamada.name}.` });
+        } catch (err) {
+          salida = JSON.stringify({
+            error: err instanceof Error ? err.message : "La consulta falló.",
+          });
+        }
+
+        resultados.push({
+          functionResponse: { name: llamada.name, response: { resultado: salida } },
+        });
+      }
+
+      historia.push({ role: "user", parts: resultados });
     }
 
-    const final = await runner.done();
-
-    if (final.stop_reason === "refusal") {
-      return { ok: false, error: "El modelo no quiso responder esa pregunta." };
-    }
-
-    const markdown = final.content
-      .filter((b): b is Anthropic.Beta.BetaTextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n")
-      .trim();
-
-    if (!markdown) {
-      return { ok: false, error: "El reporte volvió vacío. Probá con otra pregunta." };
-    }
-
-    return { ok: true, markdown, herramientas: [...new Set(usadas)] };
+    return {
+      ok: false,
+      error: "El reporte dio demasiadas vueltas sin terminar. Probá con una pregunta más concreta.",
+    };
   } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) {
+    const status = (err as { status?: number })?.status;
+    if (status === 401) {
       return { ok: false, error: "La clave de la API no es válida." };
     }
-    if (err instanceof Anthropic.RateLimitError) {
-      return { ok: false, error: "Demasiadas peticiones seguidas. Esperá un momento." };
+    if (status === 429) {
+      return { ok: false, error: "Se agotó la cuota del plan gratuito. Probá en un rato." };
     }
-    if (err instanceof Anthropic.APIError) {
-      console.error(err);
-      return { ok: false, error: `La API respondió ${err.status}. Intentá de nuevo.` };
+    // Llegar acá con un 503 significa que ya se reintentó y sigue saturado.
+    if (status && TRANSITORIOS.has(status)) {
+      return {
+        ok: false,
+        error: "El modelo está saturado en este momento. Probá de nuevo en un minuto.",
+      };
+    }
+    if (status === 404) {
+      return {
+        ok: false,
+        error: `El modelo ${MODELO} ya no está disponible. Hay que actualizarlo en agente.ts.`,
+      };
     }
     console.error(err);
     return { ok: false, error: "No se pudo generar el reporte." };

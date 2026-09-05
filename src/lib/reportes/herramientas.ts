@@ -1,6 +1,4 @@
 import "server-only";
-import { betaZodTool } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { z } from "zod";
 import {
   consumptionByRoom,
   inventoryValue,
@@ -21,32 +19,59 @@ import { formatQty } from "@/lib/units";
  * para evitar.
  */
 
-/** "agosto", "este mes", "últimos 90 días" -> un rango concreto. */
-const rango = z.object({
-  desde: z.string().describe("Fecha de inicio en formato AAAA-MM-DD, inclusive."),
-  hasta: z.string().describe("Fecha de fin en formato AAAA-MM-DD, exclusiva."),
+/**
+ * Una herramienta del agente.
+ *
+ * No importa nada del SDK del modelo a propósito: lo que hace es una consulta,
+ * y la consulta no cambia porque cambie el proveedor. El esquema se declara en
+ * la forma que espera la API de funciones (OpenAPI), que es la misma en todas.
+ */
+export type Herramienta = {
+  nombre: string;
+  descripcion: string;
+  parametros: Record<string, unknown>;
+  /** Lo que mandó el modelo. Llega sin verificar: cada herramienta lo valida. */
+  correr: (input: Record<string, unknown>) => Promise<string>;
+};
+
+const objeto = (propiedades: Record<string, unknown>, requeridos: string[] = []) => ({
+  type: "OBJECT",
+  properties: propiedades,
+  ...(requeridos.length ? { required: requeridos } : {}),
 });
 
-function fechas(input: { desde: string; hasta: string }) {
-  const desde = new Date(`${input.desde}T00:00:00`);
-  const hasta = new Date(`${input.hasta}T00:00:00`);
+const texto = (description: string) => ({ type: "STRING", description });
+const entero = (description: string) => ({ type: "INTEGER", description });
+
+/** "agosto", "este mes", "últimos 90 días" -> un rango concreto. */
+const RANGO = objeto(
+  {
+    desde: texto("Fecha de inicio en formato AAAA-MM-DD, inclusive."),
+    hasta: texto("Fecha de fin en formato AAAA-MM-DD, exclusiva."),
+  },
+  ["desde", "hasta"],
+);
+
+function fechas(input: Record<string, unknown>) {
+  const desde = new Date(`${String(input.desde)}T00:00:00`);
+  const hasta = new Date(`${String(input.hasta)}T00:00:00`);
   if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime())) {
     throw new Error("Las fechas deben venir como AAAA-MM-DD.");
   }
   return { desde, hasta };
 }
 
-const consumoDelPeriodo = betaZodTool({
-  name: "consumo_del_periodo",
-  description:
+const consumoDelPeriodo: Herramienta = {
+  nombre: "consumo_del_periodo",
+  descripcion:
     "Cuánto se consumió y se vendió en un rango de fechas: costo, ingreso, utilidad bruta, mermas y compras. Usalo para 'cómo nos fue en agosto' o 'cuánto vendimos este mes'.",
-  inputSchema: rango,
-  run: async (input) => {
+  parametros: RANGO,
+  correr: async (input) => {
     const { desde, hasta } = fechas(input);
     const flujo = await periodFlow(desde, hasta);
     return JSON.stringify({
-      desde: input.desde,
-      hasta: input.hasta,
+      desde: String(input.desde),
+      hasta: String(input.hasta),
       costoDeLoConsumido: flujo.cost,
       ingresoPorVentas: flujo.revenue,
       utilidadBruta: flujo.margin,
@@ -57,19 +82,19 @@ const consumoDelPeriodo = betaZodTool({
       moneda: "COP",
     });
   },
-});
+};
 
-const consumoPorSuite = betaZodTool({
-  name: "consumo_por_suite",
-  description:
+const consumoPorSuite: Herramienta = {
+  nombre: "consumo_por_suite",
+  descripcion:
     "Qué consumió cada alojamiento en un rango: unidades, costo, ingreso. Usalo para 'qué habitación gasta más' o 'cuánto consumió la Caverna 1'.",
-  inputSchema: rango,
-  run: async (input) => {
+  parametros: RANGO,
+  correr: async (input) => {
     const { desde, hasta } = fechas(input);
     const filas = await consumptionByRoom(desde, hasta, 100);
     return JSON.stringify({
-      desde: input.desde,
-      hasta: input.hasta,
+      desde: String(input.desde),
+      hasta: String(input.hasta),
       moneda: "COP",
       suites: filas.map((f) => ({
         alojamiento: f.number,
@@ -80,25 +105,21 @@ const consumoPorSuite = betaZodTool({
       })),
     });
   },
-});
+};
 
-const queHayQueComprar = betaZodTool({
-  name: "que_hay_que_comprar",
-  description:
+const queHayQueComprar: Herramienta = {
+  nombre: "que_hay_que_comprar",
+  descripcion:
     "Lo que está por debajo de su mínimo y lo que está por vencer. Usalo para 'qué pido esta semana', 'qué está bajo mínimo' o 'qué se me vence'.",
-  inputSchema: z.object({
-    diasDeVencimiento: z
-      .number()
-      .int()
-      .min(1)
-      .max(365)
-      .optional()
-      .describe("Cuántos días hacia adelante mirar los vencimientos. Por defecto 30."),
+  parametros: objeto({
+    diasDeVencimiento: entero(
+      "Cuántos días hacia adelante mirar los vencimientos. Por defecto 30.",
+    ),
   }),
-  run: async (input) => {
+  correr: async (input) => {
     const [bajos, vencen] = await Promise.all([
       getLowStock(500),
-      getExpiring(input.diasDeVencimiento ?? 30),
+      getExpiring(Math.min(Math.max(Number(input.diasDeVencimiento ?? 30) || 30, 1), 365)),
     ]);
     return JSON.stringify({
       bajoMinimo: bajos.map((a) => ({
@@ -116,14 +137,14 @@ const queHayQueComprar = betaZodTool({
       })),
     });
   },
-});
+};
 
-const valorDelInventario = betaZodTool({
-  name: "valor_del_inventario",
-  description:
+const valorDelInventario: Herramienta = {
+  nombre: "valor_del_inventario",
+  descripcion:
     "Cuánta plata hay en existencias hoy, a costo, por bodega y en total. Usalo para 'cuánto tengo en bodega' o 'cuánto vale el inventario'.",
-  inputSchema: z.object({}),
-  run: async () => {
+  parametros: objeto({}),
+  correr: async () => {
     const valor = await inventoryValue();
     return JSON.stringify({
       moneda: "COP",
@@ -131,20 +152,17 @@ const valorDelInventario = betaZodTool({
       porBodega: valor.byLocation.map((l) => ({ bodega: l.location, valor: l.value })),
     });
   },
-});
+};
 
-const catalogoYExistencias = betaZodTool({
-  name: "catalogo_y_existencias",
-  description:
+const catalogoYExistencias: Herramienta = {
+  nombre: "catalogo_y_existencias",
+  descripcion:
     "El saldo de cada producto, opcionalmente filtrado por nombre o categoría. Usalo cuando pregunten por un producto puntual: 'cuánta agua queda', 'cómo está el aguardiente'.",
-  inputSchema: z.object({
-    busqueda: z
-      .string()
-      .optional()
-      .describe("Texto a buscar en el nombre del producto o de su categoría."),
+  parametros: objeto({
+    busqueda: texto("Texto a buscar en el nombre del producto o de su categoría."),
   }),
-  run: async (input) => {
-    const busqueda = input.busqueda?.trim();
+  correr: async (input) => {
+    const busqueda = typeof input.busqueda === "string" ? input.busqueda.trim() : "";
     const productos = await prisma.product.findMany({
       where: {
         active: true,
@@ -189,17 +207,17 @@ const catalogoYExistencias = betaZodTool({
       }),
     );
   },
-});
+};
 
-const ultimosMovimientos = betaZodTool({
-  name: "ultimos_movimientos",
-  description:
+const ultimosMovimientos: Herramienta = {
+  nombre: "ultimos_movimientos",
+  descripcion:
     "Los movimientos más recientes con quién los hizo. Usalo para 'qué pasó ayer' o 'quién sacó el aguardiente'.",
-  inputSchema: z.object({
-    cuantos: z.number().int().min(1).max(50).optional().describe("Por defecto 20."),
-  }),
-  run: async (input) => {
-    const movimientos = await recentMovements(input.cuantos ?? 20);
+  parametros: objeto({ cuantos: entero("Cuántos traer, de 1 a 50. Por defecto 20.") }),
+  correr: async (input) => {
+    const pedidos = Number(input.cuantos ?? 20);
+    const cuantos = Math.min(Math.max(Number.isFinite(pedidos) ? pedidos : 20, 1), 50);
+    const movimientos = await recentMovements(cuantos);
     return JSON.stringify(
       movimientos.map((m) => ({
         cuando: m.occurredAt.toISOString(),
@@ -216,9 +234,9 @@ const ultimosMovimientos = betaZodTool({
       })),
     );
   },
-});
+};
 
-export const HERRAMIENTAS = [
+export const HERRAMIENTAS: Herramienta[] = [
   consumoDelPeriodo,
   consumoPorSuite,
   queHayQueComprar,

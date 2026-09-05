@@ -45,7 +45,7 @@ export function AgenteDeReportes({ hayClave }: { hayClave: boolean }) {
         <Empty
           icon={TriangleAlert}
           title="Falta la clave de la API"
-          body="Agregá ANTHROPIC_API_KEY en las variables de entorno de Vercel y volvé a desplegar. Sin eso, el agente no puede consultar nada."
+          body="Agregá GEMINI_API_KEY en las variables de entorno de Vercel y volvé a desplegar. Sin eso, el agente no puede consultar nada."
         />
       </Card>
     );
@@ -92,6 +92,12 @@ export function AgenteDeReportes({ hayClave }: { hayClave: boolean }) {
           {pending ? "Consultando el inventario…" : "Pedir el reporte"}
           {!pending ? <Sparkles className="size-4" /> : null}
         </Button>
+
+        {pending ? (
+          <p className="mt-2.5 px-1 text-center text-[0.8125rem] text-faint">
+            Puede tardar un minuto o dos: consulta la base y después escribe.
+          </p>
+        ) : null}
       </div>
 
       {reporte ? (

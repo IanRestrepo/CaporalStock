@@ -10,11 +10,10 @@ import { HERRAMIENTAS } from "@/lib/reportes/herramientas";
  * lo rellena.
  */
 
-const porNombre = Object.fromEntries(HERRAMIENTAS.map((h) => [h.name, h]));
+const porNombre = Object.fromEntries(HERRAMIENTAS.map((h) => [h.nombre, h]));
 
-async function correr(nombre: string, input: unknown) {
-  const salida = await porNombre[nombre].run(input as never, {} as never);
-  return JSON.parse(String(salida));
+async function correr(nombre: string, input: Record<string, unknown>) {
+  return JSON.parse(await porNombre[nombre].correr(input));
 }
 
 const MES = { desde: "2026-08-01", hasta: "2026-09-01" };
@@ -23,10 +22,10 @@ describe("herramientas del agente de reportes", () => {
   test("están todas y se describen solas", () => {
     expect(HERRAMIENTAS).toHaveLength(6);
     for (const h of HERRAMIENTAS) {
-      expect(h.name).toMatch(/^[a-z_]+$/);
+      expect(h.nombre).toMatch(/^[a-z_]+$/);
       // La descripción es lo único que el modelo lee para elegir: si es pobre,
       // corre la herramienta equivocada.
-      expect(h.description!.length).toBeGreaterThan(60);
+      expect(h.descripcion.length).toBeGreaterThan(60);
     }
   });
 
