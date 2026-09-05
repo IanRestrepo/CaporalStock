@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { FileText } from "lucide-react";
+import { NOMBRES, type Tipo } from "@/lib/reportes/catalogo";
 import { Card, SectionLabel } from "@/components/ui/card";
 import { LevelBar } from "@/components/level-row";
 import { PageHeader, Screen } from "@/components/screen";
@@ -45,6 +47,8 @@ export default async function ReportesPage({ searchParams }: PageProps<"/reporte
   const params = await searchParams;
   const period = typeof params.periodo === "string" ? params.periodo : "mes";
   const { start, end } = rangeFor(period);
+  // El PDF respeta el período elegido arriba: un solo control para las dos cosas.
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
 
   const [value, flow, rooms, top, waste, byUser] = await Promise.all([
     inventoryValue(),
@@ -73,6 +77,22 @@ export default async function ReportesPage({ searchParams }: PageProps<"/reporte
           >
             {option.label}
           </Link>
+        ))}
+      </div>
+
+      <SectionLabel className="mb-2.5">Descargar en PDF</SectionLabel>
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {(Object.keys(NOMBRES) as Tipo[]).map((tipo) => (
+          <a
+            key={tipo}
+            href={`/api/reportes?tipo=${tipo}&desde=${iso(start)}&hasta=${iso(end)}`}
+            target="_blank"
+            rel="noopener"
+            className="press flex items-center gap-2.5 rounded-[16px] bg-surface px-3.5 py-3 text-[0.875rem] font-medium hover:bg-raised"
+          >
+            <FileText className="size-4 shrink-0 text-faint" strokeWidth={1.75} />
+            <span className="min-w-0 truncate">{NOMBRES[tipo]}</span>
+          </a>
         ))}
       </div>
 

@@ -6,6 +6,7 @@ import {
   recentMovements,
 } from "@/lib/dashboard";
 import { getExpiring, getLowStock } from "@/lib/alerts";
+import { NOMBRES, TIPOS, type Tipo } from "@/lib/reportes/catalogo";
 import { num } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { formatQty } from "@/lib/units";
@@ -236,6 +237,48 @@ const ultimosMovimientos: Herramienta = {
   },
 };
 
+/**
+ * El PDF.
+ *
+ * No lo dibuja el modelo: elige el tipo y las fechas, y devuelve el enlace que
+ * arma la hoja con los datos de la base. Así el papel dice lo mismo que la app,
+ * pase lo que pase con la redacción de arriba.
+ */
+const generarPdf: Herramienta = {
+  nombre: "generar_pdf",
+  descripcion:
+    "Arma el reporte en PDF con el membrete de la hacienda, listo para imprimir o archivar. Usalo cuando pidan 'un reporte', 'un PDF', 'algo para imprimir' o 'pasámelo en papel'. Tipos: ventas, stock, alertas, danios, movimientos, compras, suites.",
+  parametros: objeto(
+    {
+      tipo: texto(
+        "Uno de: ventas, stock, alertas, danios, movimientos, compras, suites.",
+      ),
+      desde: texto("Fecha de inicio AAAA-MM-DD. Se ignora en stock y alertas."),
+      hasta: texto("Fecha de fin AAAA-MM-DD, exclusiva. Se ignora en stock y alertas."),
+    },
+    ["tipo"],
+  ),
+  correr: async (input) => {
+    const tipo = String(input.tipo ?? "");
+    if (!TIPOS.includes(tipo as Tipo)) {
+      return JSON.stringify({ error: `No existe el reporte "${tipo}".`, disponibles: TIPOS });
+    }
+
+    const hoy = new Date();
+    const inicio = String(input.desde ?? "") || new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
+    const fin = String(input.hasta ?? "") || new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1).toISOString().slice(0, 10);
+
+    return JSON.stringify({
+      listo: true,
+      nombre: NOMBRES[tipo as Tipo],
+      // El enlace se le da al usuario tal cual; que lo escriba en la respuesta.
+      enlace: `/api/reportes?tipo=${tipo}&desde=${inicio}&hasta=${fin}`,
+      instruccion:
+        "Decile al usuario que el reporte está listo y pegá el enlace como [Abrir el PDF](enlace).",
+    });
+  },
+};
+
 export const HERRAMIENTAS: Herramienta[] = [
   consumoDelPeriodo,
   consumoPorSuite,
@@ -243,4 +286,5 @@ export const HERRAMIENTAS: Herramienta[] = [
   valorDelInventario,
   catalogoYExistencias,
   ultimosMovimientos,
+  generarPdf,
 ];

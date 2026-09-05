@@ -20,7 +20,7 @@ const MES = { desde: "2026-08-01", hasta: "2026-09-01" };
 
 describe("herramientas del agente de reportes", () => {
   test("están todas y se describen solas", () => {
-    expect(HERRAMIENTAS).toHaveLength(6);
+    expect(HERRAMIENTAS).toHaveLength(7);
     for (const h of HERRAMIENTAS) {
       expect(h.nombre).toMatch(/^[a-z_]+$/);
       // La descripción es lo único que el modelo lee para elegir: si es pobre,
@@ -81,6 +81,18 @@ describe("herramientas del agente de reportes", () => {
     expect(stock.length).toBeGreaterThan(0);
     for (const p of venden) expect(p.precioVenta).toBeGreaterThan(0);
     for (const p of stock) expect(p.precioVenta).toBe(0);
+  });
+
+  test("el PDF devuelve un enlace de la app, no de afuera", async () => {
+    const r = await correr("generar_pdf", { tipo: "stock" });
+    expect(r.listo).toBe(true);
+    expect(r.enlace).toMatch(/^\/api\/reportes\?tipo=stock/);
+  });
+
+  test("un tipo de reporte inventado se rechaza", async () => {
+    const r = await correr("generar_pdf", { tipo: "loquesea" });
+    expect(r.error).toMatch(/No existe/);
+    expect(r.disponibles).toContain("ventas");
   });
 
   test("los últimos movimientos respetan el tope pedido", async () => {

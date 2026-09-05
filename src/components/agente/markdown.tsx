@@ -16,15 +16,32 @@ export function Markdown({ texto }: { texto: string }) {
   let clave = 0;
 
   const inline = (s: string) =>
-    s.split(/(\*\*[^*]+\*\*)/g).map((parte, j) =>
-      parte.startsWith("**") && parte.endsWith("**") ? (
-        <strong key={j} className="font-semibold">
-          {parte.slice(2, -2)}
-        </strong>
-      ) : (
-        <span key={j}>{parte}</span>
-      ),
-    );
+    s.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g).map((parte, j) => {
+      if (parte.startsWith("**") && parte.endsWith("**")) {
+        return (
+          <strong key={j} className="font-semibold">
+            {parte.slice(2, -2)}
+          </strong>
+        );
+      }
+      // Enlaces: sólo los internos de la app, para que el modelo no pueda
+      // mandar a nadie a una dirección de afuera.
+      const enlace = parte.match(/^\[([^\]]+)\]\((\/[^)]*)\)$/);
+      if (enlace) {
+        return (
+          <a
+            key={j}
+            href={enlace[2]}
+            target="_blank"
+            rel="noopener"
+            className="font-medium text-accent underline underline-offset-2"
+          >
+            {enlace[1]}
+          </a>
+        );
+      }
+      return <span key={j}>{parte}</span>;
+    });
 
   while (i < lineas.length) {
     const linea = lineas[i];

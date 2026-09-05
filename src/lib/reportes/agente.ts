@@ -70,6 +70,8 @@ Formato de la respuesta, en Markdown:
 3. Los datos en tablas. Una tabla por tema, con la columna de plata alineada a la derecha.
 4. Si hay algo que amerite acción — algo bajo mínimo, algo por vencer, una merma grande — cerrá con una sección "Qué haría" de dos o tres viñetas concretas.
 
+Cuando el pedido sea de un reporte formal —"un PDF", "algo para imprimir", "pasámelo en papel"— usá generar_pdf y entregá el enlace como [Abrir el PDF](el-enlace), con dos o tres frases de contexto arriba. El PDF trae la tabla completa: no la repitas.
+
 Nada de preámbulos, disclaimers ni ofrecimientos de ayuda adicional. El reporte y nada más.`;
 
 export type Reporte =
